@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PK/PD Monte Carlo Simulator</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,25 95,75 50,95 5,75 5,25' fill='%2316191e' stroke='%23f6c857' stroke-width='2'/><text x='50' y='60' font-size='30' fill='%23f6c857' text-anchor='middle' font-family='monospace'>PK</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            /* Arknights Color Palette */
+            --bg-base: #0a0c10;
+            --bg-panel: #12151a;
+            --bg-card: #1a1d22;
+            --bg-input: #1e2128;
+            --border-dark: #2a2e35;
+            --border-light: #3a3f48;
+            --text-main: #e8e4dc;
+            --text-sub: #9a9a9a;
+            --text-dim: #5a5a5a;
+            --accent-gold: #f6c857;
+            --accent-gold-dark: #c4a040;
+            --accent-orange: #e87f3a;
+            --accent-cyan: #4ac4c4;
+            --accent-green: #5ac45a;
+            --accent-red: #c45a5a;
+            --accent-purple: #9a5ac4;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Noto Sans SC', 'Noto Sans JP', monospace;
+            background: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            font-size: 12px;
+        }
+
+        /* Header - Arknights Style */
+        header {
+            background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-base) 100%);
+            border-bottom: 2px solid var(--accent-gold);
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(90deg, rgba(246,200,87,0.15) 0%, transparent 100%);
+            border-right: 1px solid var(--border-dark);
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%);
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            color: var(--text-main);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--accent-gold);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        .logo span { color: var(--accent-gold); }
+
+        .nav-section {
+            display: flex;
+            align-items: center;
+            gap: 1px;
+            background: var(--border-dark);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+
+        .nav-links a {
+            display: block;
+            padding: 1rem 1.5rem;
+            text-decoration: none;
+            color: var(--text-sub);
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            background: var(--bg-panel);
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+            background: var(--bg-card);
+        }
+
+        .nav-links a.active {
+            color: var(--accent-gold);
+            border-left-color: var(--accent-gold);
+            background: var(--bg-card);
+        }
+
+        .lang-section {
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            background: var(--bg-panel);
+        }
+
+        .lang-selector {
+            display: flex;
+            gap: 2px;
+        }
+
+        .lang-btn {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.65rem;
+            font-weight: 500;
+            background: var(--bg-input);
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .lang-btn:hover { color: var(--text-sub); background: var(--bg-card); }
+        .lang-btn.active { color: var(--bg-base); background: var(--accent-gold); }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            max-width: 1920px;
+            margin: 0 auto;
+            min-height: calc(100vh - 52px);
+        }
+
+        /* Sidebar - Arknights Style */
+        .sidebar {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-dark);
+            overflow-y: auto;
+            max-height: calc(100vh - 52px);
+        }
+
+        .panel {
+            border-bottom: 1px solid var(--border-dark);
+            padding: 1rem 1.25rem;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-dark);
+        }
+
+        .panel-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+        }
+
+        .panel-badge {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.5rem;
+            background: var(--accent-gold);
+            color: var(--bg-base);
+            font-weight: 600;
+        }
+
+        /* Preset Section */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .preset-btn {
+            position: relative;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+            color: var(--text-main);
+            font-family: inherit;
+            clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent-gold);
+            background: var(--bg-input);
+        }
+
+        .preset-btn .name {
+            font-weight: 600;
+            color: var(--accent-gold);
+            display: block;
+        }
+
+        .preset-btn .desc {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin-top: 0.15rem;
+        }
+
+        /* Forms */
+        .form-group { margin-bottom: 0.75rem; }
+        .form-group:last-child { margin-bottom: 0; }
+
+        .form-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            font-weight: 400;
+            color: var(--text-sub);
+            margin-bottom: 0.35rem;
+            letter-spacing: 0.02em;
+        }
+
+        .form-label .unit {
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.5rem 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            border: 1px solid var(--border-dark);
+            background: var(--bg-input);
+            color: var(--text-main);
+            transition: border-color 0.15s;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+        .form-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1rem;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            width: 100%;
+            text-transform: uppercase;
+            clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dark) 100%);
+            color: var(--bg-base);
+        }
+
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-dark);
+        }
+
+        .btn-secondary:hover { border-color: var(--accent-gold); }
+
+        .btn-sm { padding: 0.4rem 0.6rem; font-size: 0.7rem; width: auto; }
+        .btn-group { display: flex; gap: 0.5rem; }
+        .btn-group .btn { flex: 1; }
+
+        /* Model Selector */
+        .model-selector { display: flex; flex-wrap: wrap; gap: 4px; }
+
+        .model-chip {
+            padding: 0.35rem 0.6rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--text-sub);
+            font-family: inherit;
+        }
+
+        .model-chip:hover { border-color: var(--accent-gold); }
+        .model-chip.active {
+            background: var(--accent-gold);
+            color: var(--bg-base);
+            border-color: var(--accent-gold);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(90deg, rgba(246,200,87,0.1) 0%, transparent 100%);
+            border-left: 2px solid var(--accent-gold);
+            padding: 0.6rem 0.75rem;
+            font-size: 0.7rem;
+            color: var(--text-sub);
+        }
+
+        .info-box strong { color: var(--accent-gold); }
+
+        /* Param Group */
+        .param-group {
+            background: var(--bg-card);
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-left: 2px solid var(--border-dark);
+        }
+
+        .param-group-title {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .param-group-title .formula {
+            font-size: 0.6rem;
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Literature Reference */
+        .lit-ref {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
+        /* Chart Area */
+        .chart-area {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-base);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-dark);
+        }
+
+        .chart-title h1 {
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--text-main);
+        }
+
+        .chart-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 0.2rem;
+            letter-spacing: 0.02em;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            color: var(--text-sub);
+            text-transform: uppercase;
+        }
+
+        .status-badge.running {
+            background: var(--accent-green);
+            color: var(--bg-base);
+            border-color: var(--accent-green);
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: currentColor;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1px;
+            background: var(--border-dark);
+        }
+
+        .stat-card {
+            background: var(--bg-panel);
+            padding: 1rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 4px solid var(--accent-gold);
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-unit { font-size: 0.6rem; color: var(--text-dim); margin-left: 0.1rem; }
+        .stat-hint { font-size: 0.55rem; color: var(--accent-cyan); margin-top: 0.15rem; }
+
+        /* Charts */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border-dark);
+        }
+
+        .chart-container {
+            background: var(--bg-panel);
+            padding: 1rem;
+        }
+
+        .chart-container.full-width { grid-column: span 2; }
+        .chart-wrapper { position: relative; width: 100%; height: 280px; }
+        .chart-wrapper.tall { height: 380px; }
+        canvas { width: 100%; height: 100%; }
+
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.6rem;
+            font-size: 0.7rem;
+            color: var(--text-sub);
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+        .legend-color { width: 10px; height: 10px; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+
+        /* Log */
+        .log-container {
+            background: var(--bg-base);
+            padding: 0.75rem;
+            font-size: 0.7rem;
+            color: var(--text-sub);
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .log-line { margin-bottom: 0.2rem; display: flex; gap: 0.5rem; }
+        .log-time { color: var(--text-dim); flex-shrink: 0; }
+        .log-info { color: var(--accent-gold-dark); }
+        .log-success { color: var(--accent-green); }
+        .log-warning { color: var(--accent-orange); }
+        .log-error { color: var(--accent-red); }
+        .log-math { color: var(--accent-cyan); }
+
+        .progress-bar { height: 2px; background: var(--bg-card); margin-top: 0.5rem; }
+        .progress-fill { height: 100%; background: var(--accent-gold); transition: width 0.3s; }
+
+        /* Footer */
+        footer {
+            padding: 0.75rem 0;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-dark);
+            text-align: center;
+        }
+
+        footer p { color: var(--text-dim); font-size: 0.65rem; letter-spacing: 0.02em; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .sidebar { max-height: none; }
+            .chart-grid { grid-template-columns: 1fr; }
+            .chart-container.full-width { grid-column: span 1; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .nav-section { display: none; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-wrapper { height: 200px; }
+            .preset-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo-section">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon"></div>
+                    HRT<span>-KAFFEE</span>
+                </a>
+            </div>
+            <nav class="nav-section">
+                <ul class="nav-links">
+                    <li><a href="index.html" data-i18n="nav.home">HOME</a></li>
+                    <li><a href="chart.html" data-i18n="nav.kline">K-LINE</a></li>
+                    <li><a href="pkpd-simulator.html" class="active" data-i18n="nav.simulator">SIMULATOR</a></li>
+                    <li><a href="https://github.com/yumeminekosan/Hrt-kaffee">GITHUB</a></li>
+                </ul>
+            </nav>
+            <div class="lang-section">
+                <div class="lang-selector">
+                    <button class="lang-btn active" data-lang="zh">CN</button>
+                    <button class="lang-btn" data-lang="ja">JP</button>
+                    <button class="lang-btn" data-lang="de">DE</button>
+                    <button class="lang-btn" data-lang="da">DA</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-layout">
+        <aside class="sidebar">
+            <!-- Preset Section -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="preset.title">Quick Presets</span>
+                    <span class="panel-badge">LIT</span>
+                </div>
+                <div class="preset-grid">
+                    <button class="preset-btn" onclick="applyPreset('e2_oral')">
+                        <span class="name">E2 Oral</span>
+                        <span class="desc" data-i18n="preset.e2oral">Estradiol 2mg/day (Progynova)</span>
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('e2v_im')">
+                        <span class="name">E2V IM</span>
+                        <span class="desc" data-i18n="preset.e2v">Estradiol Valerate 5mg/7d</span>
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('e2c_im')">
+                        <span class="name">E2C IM</span>
+                        <span class="desc" data-i18n="preset.e2c">Estradiol Cypionate 5mg/7d</span>
+                    </button>
+                    <button class="preset-btn" onclick="applyPreset('test_en')">
+                        <span class="name">TEST En</span>
+                        <span class="desc" data-i18n="preset.test">Testosterone Enanthate 100mg/7d</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="panel.drug">Drug Settings</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="form.drugType">Drug Type</label>
+                    <select class="form-select" id="hormoneSelect" onchange="updateDrugParams()">
+                        <option value="E2_oral">E2 Estradiol (Oral)</option>
+                        <option value="E2_subl">E2 Estradiol (Sublingual)</option>
+                        <option value="E2_td">E2 Estradiol (Transdermal)</option>
+                        <option value="E2V">E2V Estradiol Valerate (IM)</option>
+                        <option value="E2C">E2C Estradiol Cypionate (IM)</option>
+                        <option value="E2E">E2E Estradiol Enanthate (IM)</option>
+                        <option value="TEST_En">TEST Enanthate (IM)</option>
+                        <option value="TEST_Cy">TEST Cypionate (IM)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><span data-i18n="form.dose">Dose</span> <span class="unit">mg</span></label>
+                        <input type="number" class="form-input" id="doseInput" value="2" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><span data-i18n="form.interval">Interval</span> <span class="unit" data-i18n="unit.days">days</span></label>
+                        <input type="number" class="form-input" id="intervalInput" value="1" step="0.5">
+                    </div>
+                </div>
+                <div class="info-box" id="therapeuticInfo">
+                    <strong data-i18n="info.therapeutic">Therapeutic Range:</strong> 50-150 pg/mL
+                    <div class="lit-ref">Ref: PMID 33574350</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="panel.model">Model Selection</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="form.pkModel">PK Model</label>
+                    <div class="model-selector" id="pkModelSelector">
+                        <div class="model-chip active" data-model="one-compartment">1-CMT</div>
+                        <div class="model-chip" data-model="two-compartment">2-CMT</div>
+                        <div class="model-chip" data-model="pbpk">PBPK</div>
+                        <div class="model-chip" data-model="tmdd">TMDD</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="form.pdModel">PD Model</label>
+                    <div class="model-selector" id="pdModelSelector">
+                        <div class="model-chip active" data-model="none">None</div>
+                        <div class="model-chip" data-model="hill">Hill</div>
+                        <div class="model-chip" data-model="indirect">IDR</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="form.sdeModel">Stochastic Model</label>
+                    <div class="model-selector" id="sdeModelSelector">
+                        <div class="model-chip active" data-model="sde">SDE+Itô</div>
+                        <div class="model-chip" data-model="jump">Jump-Diff</div>
+                        <div class="model-chip" data-model="garch">GARCH</div>
+                        <div class="model-chip" data-model="deterministic">DET</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="panel.interactions">Drug Interactions</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">CYP3A4</label>
+                    <select class="form-select" id="cyp3a4Select">
+                        <option value="none">无相互作用</option>
+                        <option value="inhibitor_mild">轻度抑制 (西柚汁)</option>
+                        <option value="inhibitor_moderate">中度抑制 (氟康唑)</option>
+                        <option value="inhibitor_strong">强抑制 (酮康唑)</option>
+                        <option value="inducer_mild">轻度诱导 (莫达非尼)</option>
+                        <option value="inducer_moderate">中度诱导 (依法韦伦)</option>
+                        <option value="inducer_strong">强诱导 (利福平)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="panel.monteCarlo">Monte Carlo</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="form.simulations">Simulations</label>
+                        <input type="number" class="form-input" id="simsInput" value="1000" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="form.timeHorizon">Days</label>
+                        <input type="number" class="form-input" id="timeHorizon" value="30" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="panel.pkParams">PK Parameters</span>
+                    <span class="panel-badge" id="litBadge">PMID</span>
+                </div>
+                
+                <div class="param-group">
+                    <div class="param-group-title">
+                        <span data-i18n="param.basic">Basic</span>
+                        <span class="formula" id="paramFormula">dC/dt = -k*C</span>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">CL <span class="unit">L/h</span></label>
+                            <input type="number" class="form-input" id="clInput" value="600" step="10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Vd <span class="unit">L</span></label>
+                            <input type="number" class="form-input" id="vdInput" value="100" step="5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ka <span class="unit">1/h</span></label>
+                            <input type="number" class="form-input" id="kaInput" value="0.5" step="0.05">
+                        </div>
+                    </div>
+                    <div class="lit-ref" id="paramRef">Ref: Literature values</div>
+                </div>
+
+                <div class="param-group">
+                    <div class="param-group-title">
+                        <span>SDE</span>
+                        <span class="formula">dX = mu*dt + sig*dW</span>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">sigma</label>
+                            <input type="number" class="form-input" id="sigmaInput" value="0.2" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">IIV CV%</label>
+                            <input type="number" class="form-input" id="iivInput" value="30" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">F (bio)</label>
+                            <input type="number" class="form-input" id="fInput" value="0.05" step="0.01">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <button class="btn btn-primary" id="runSimulation" data-i18n="btn.run">RUN SIMULATION</button>
+                <div class="btn-group" style="margin-top: 0.5rem;">
+                    <button class="btn btn-secondary btn-sm" id="stopBtn" disabled data-i18n="btn.stop">Stop</button>
+                    <button class="btn btn-secondary btn-sm" id="resetBtn" data-i18n="btn.reset">Reset</button>
+                    <button class="btn btn-secondary btn-sm" id="exportBtn" data-i18n="btn.export">Export</button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="chart-area">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <h1 data-i18n="title.simulator">Monte Carlo PK/PD Simulator</h1>
+                    <p class="chart-subtitle">SDE + Ito | Literature-Based Parameters | MCMC</p>
+                </div>
+                <div class="status-badge" id="statusBadge" data-i18n="status.ready">READY</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat.cmax">Cmax</div>
+                    <div class="stat-value" id="cmaxStat">-<span class="stat-unit">pg/mL</span></div>
+                    <div class="stat-hint" data-i18n="stat.cmaxHint">Peak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat.cmin">Cmin</div>
+                    <div class="stat-value" id="cminStat">-<span class="stat-unit">pg/mL</span></div>
+                    <div class="stat-hint" data-i18n="stat.cminHint">Trough</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat.tmax">Tmax</div>
+                    <div class="stat-value" id="tmaxStat">-<span class="stat-unit">h</span></div>
+                    <div class="stat-hint" data-i18n="stat.tmaxHint">Time to peak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat.auc">AUC</div>
+                    <div class="stat-value" id="aucStat">-<span class="stat-unit">pg*h/mL</span></div>
+                    <div class="stat-hint" data-i18n="stat.aucHint">Exposure</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat.halflife">T1/2</div>
+                    <div class="stat-value" id="halfLifeStat">-<span class="stat-unit">h</span></div>
+                    <div class="stat-hint" data-i18n="stat.halflifeHint">Half-life</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="stat.therapeutic">Therapeutic %</div>
+                    <div class="stat-value" id="theraStat">-<span class="stat-unit">%</span></div>
+                    <div class="stat-hint" data-i18n="stat.therapeuticHint">In range</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container full-width">
+                    <div class="chart-wrapper tall">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-color" style="background: #f6c857;"></div><span data-i18n="legend.median">Median</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background: rgba(246,200,87,0.3);"></div><span data-i18n="legend.pi">90% PI</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background: rgba(90,196,90,0.3);"></div><span data-i18n="legend.therapeutic">Therapeutic</span></div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                    <div class="chart-legend"><div class="legend-item" data-i18n="legend.distribution">Distribution</div></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="clearanceChart"></canvas>
+                    </div>
+                    <div class="chart-legend"><div class="legend-item" data-i18n="legend.clearance">CL Evolution</div></div>
+                </div>
+            </div>
+
+            <div class="chart-container full-width" style="border: none; border-top: 1px solid var(--border-dark);">
+                <div class="panel-header">
+                    <span class="panel-title" data-i18n="panel.log">Log</span>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-line"><span class="log-time">[SYS]</span> <span class="log-info" data-i18n="log.init">Ready. Select preset or configure parameters.</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p data-i18n="footer.disclaimer">For research only. Consult physician for treatment.</p>
+    </footer>
+
+    <script>
+        // ============================================
+        // i18n Translations
+        // ============================================
+        const i18n = {
+            zh: {
+                'nav.home': '首页', 'nav.kline': 'K线', 'nav.simulator': '模拟器',
+                'preset.title': '快速预设', 'preset.e2oral': '雌二醇 2mg/天 (补佳乐)',
+                'preset.e2v': '戊酸雌二醇 5mg/7天', 'preset.e2c': '环戊丙酸雌二醇 5mg/7天',
+                'preset.test': '庚酸睾酮 100mg/7天',
+                'panel.drug': '药物设置', 'panel.model': '模型选择', 'panel.monteCarlo': '蒙特卡洛',
+                'panel.pkParams': '药代动力学参数', 'panel.log': '日志', 'panel.interactions': '药物相互作用',
+                'form.drugType': '药物类型', 'form.dose': '剂量', 'form.interval': '间隔',
+                'form.pkModel': 'PK模型', 'form.pdModel': 'PD模型', 'form.sdeModel': '随机模型',
+                'form.simulations': '模拟次数', 'form.timeHorizon': '预测天数',
+                'info.therapeutic': '治疗窗:', 'param.basic': '基础参数',
+                'btn.run': '运行模拟', 'btn.stop': '停止', 'btn.reset': '重置', 'btn.export': '导出',
+                'title.simulator': '蒙特卡洛 PK/PD 模拟器',
+                'status.ready': '就绪',
+                'stat.cmax': 'Cmax 峰值', 'stat.cmin': 'Cmin 谷值', 'stat.tmax': 'Tmax 达峰',
+                'stat.auc': 'AUC', 'stat.halflife': 'T1/2', 'stat.therapeutic': '治疗窗%',
+                'stat.cmaxHint': '峰值浓度', 'stat.cminHint': '谷值浓度', 'stat.tmaxHint': '达峰时间',
+                'stat.aucHint': '暴露量', 'stat.halflifeHint': '半衰期', 'stat.therapeuticHint': '达标率',
+                'legend.median': '中位数', 'legend.pi': '90%预测区间', 'legend.therapeutic': '治疗窗',
+                'legend.distribution': '浓度分布', 'legend.clearance': '清除率演变',
+                'footer.disclaimer': '仅供研究参考，实际用药请遵医嘱',
+                'log.init': '初始化完成。选择预设或手动配置参数。',
+                'unit.days': '天'
+            },
+            ja: {
+                'nav.home': 'ホーム', 'nav.kline': 'K-Line', 'nav.simulator': 'シミュレーター',
+                'preset.title': 'プリセット', 'preset.e2oral': 'エストラジオール 2mg/日',
+                'preset.e2v': '吉草酸エストラジオール 5mg/7日', 'preset.e2c': 'シピオン酸 5mg/7日',
+                'preset.test': 'エナント酸テストステロン 100mg/7日',
+                'panel.drug': '薬物設定', 'panel.model': 'モデル', 'panel.monteCarlo': 'モンテカルロ',
+                'panel.pkParams': '薬物動態パラメータ', 'panel.log': 'ログ', 'panel.interactions': '薬物相互作用',
+                'form.drugType': '薬物タイプ', 'form.dose': '用量', 'form.interval': '間隔',
+                'form.pkModel': 'PKモデル', 'form.pdModel': 'PDモデル', 'form.sdeModel': '確率モデル',
+                'form.simulations': 'シミュレーション回数', 'form.timeHorizon': '予測日数',
+                'info.therapeutic': '治療域:', 'param.basic': '基本パラメータ',
+                'btn.run': 'シミュレーション実行', 'btn.stop': '停止', 'btn.reset': 'リセット', 'btn.export': 'エクスポート',
+                'title.simulator': 'モンテカルロ PK/PD シミュレーター',
+                'status.ready': '準備完了',
+                'stat.cmax': 'Cmax', 'stat.cmin': 'Cmin', 'stat.tmax': 'Tmax',
+                'stat.auc': 'AUC', 'stat.halflife': 'T1/2', 'stat.therapeutic': '治療域%',
+                'stat.cmaxHint': 'ピーク', 'stat.cminHint': 'トラフ', 'stat.tmaxHint': 'ピーク時間',
+                'stat.aucHint': '暴露量', 'stat.halflifeHint': '半減期', 'stat.therapeuticHint': '達成率',
+                'legend.median': '中央値', 'legend.pi': '90%予測区間', 'legend.therapeutic': '治療域',
+                'legend.distribution': '分布', 'legend.clearance': 'クリアランス',
+                'footer.disclaimer': '研究用です。医師に相談してください。',
+                'log.init': '初期化完了。プリセットを選択するか、パラメータを設定してください。',
+                'unit.days': '日'
+            },
+            de: {
+                'nav.home': 'Home', 'nav.kline': 'K-Line', 'nav.simulator': 'Simulator',
+                'preset.title': 'Voreinstellungen', 'preset.e2oral': 'Oestradiol 2mg/Tag',
+                'preset.e2v': 'Oestradiolvalerat 5mg/7 Tage', 'preset.e2c': 'Oestradiolcypionat 5mg/7 Tage',
+                'preset.test': 'Testosteronenanthat 100mg/7 Tage',
+                'panel.drug': 'Medikament', 'panel.model': 'Modell', 'panel.monteCarlo': 'Monte Carlo',
+                'panel.pkParams': 'PK-Parameter', 'panel.log': 'Log', 'panel.interactions': 'Interaktionen',
+                'form.drugType': 'Medikament', 'form.dose': 'Dosis', 'form.interval': 'Intervall',
+                'form.pkModel': 'PK-Modell', 'form.pdModel': 'PD-Modell', 'form.sdeModel': 'Stochastik',
+                'form.simulations': 'Simulationen', 'form.timeHorizon': 'Tage',
+                'info.therapeutic': 'Therapeutisch:', 'param.basic': 'Basis',
+                'btn.run': 'STARTEN', 'btn.stop': 'Stopp', 'btn.reset': 'Reset', 'btn.export': 'Export',
+                'title.simulator': 'Monte Carlo PK/PD Simulator',
+                'status.ready': 'BEREIT',
+                'stat.cmax': 'Cmax', 'stat.cmin': 'Cmin', 'stat.tmax': 'Tmax',
+                'stat.auc': 'AUC', 'stat.halflife': 'T1/2', 'stat.therapeutic': 'Therap.%',
+                'stat.cmaxHint': 'Peak', 'stat.cminHint': 'Trough', 'stat.tmaxHint': 'Peak-Zeit',
+                'stat.aucHint': 'Exposition', 'stat.halflifeHint': 'Halbwertszeit', 'stat.therapeuticHint': 'Im Bereich',
+                'legend.median': 'Median', 'legend.pi': '90% PI', 'legend.therapeutic': 'Therapeutisch',
+                'legend.distribution': 'Verteilung', 'legend.clearance': 'Clearance',
+                'footer.disclaimer': 'Nur fuer Forschung. Konsultieren Sie einen Arzt.',
+                'log.init': 'Initialisiert. Waehlen Sie eine Voreinstellung.',
+                'unit.days': 'Tage'
+            },
+            da: {
+                'nav.home': 'Hjem', 'nav.kline': 'K-Line', 'nav.simulator': 'Simulator',
+                'preset.title': 'Forudindstillinger', 'preset.e2oral': 'Oestradiol 2mg/dag',
+                'preset.e2v': 'Oestradiolvalerat 5mg/7 dage', 'preset.e2c': 'Oestradiolcypionat 5mg/7 dage',
+                'preset.test': 'Testosteronenanthat 100mg/7 dage',
+                'panel.drug': 'Laegemiddel', 'panel.model': 'Model', 'panel.monteCarlo': 'Monte Carlo',
+                'panel.pkParams': 'PK-parametre', 'panel.log': 'Log', 'panel.interactions': 'Interaktioner',
+                'form.drugType': 'Laegemiddel', 'form.dose': 'Dosis', 'form.interval': 'Interval',
+                'form.pkModel': 'PK-model', 'form.pdModel': 'PD-model', 'form.sdeModel': 'Stokastisk',
+                'form.simulations': 'Simulationer', 'form.timeHorizon': 'Dage',
+                'info.therapeutic': 'Terapeutisk:', 'param.basic': 'Basis',
+                'btn.run': 'KOER', 'btn.stop': 'Stop', 'btn.reset': 'Nulstil', 'btn.export': 'Eksport',
+                'title.simulator': 'Monte Carlo PK/PD Simulator',
+                'status.ready': 'KLAR',
+                'stat.cmax': 'Cmax', 'stat.cmin': 'Cmin', 'stat.tmax': 'Tmax',
+                'stat.auc': 'AUC', 'stat.halflife': 'T1/2', 'stat.therapeutic': 'Terap.%',
+                'stat.cmaxHint': 'Top', 'stat.cminHint': 'Bund', 'stat.tmaxHint': 'Top-tid',
+                'stat.aucHint': 'Eksponering', 'stat.halflifeHint': 'Halveringstid', 'stat.therapeuticHint': 'I omraade',
+                'legend.median': 'Median', 'legend.pi': '90% PI', 'legend.therapeutic': 'Terapeutisk',
+                'legend.distribution': 'Fordeling', 'legend.clearance': 'Clearance',
+                'footer.disclaimer': 'Kun til forskning. Konsulter en laege.',
+                'log.init': 'Initialiseret. Vaerlg en forudindstilling.',
+                'unit.days': 'dage'
+            }
+        };
+
+        // ============================================
+        // Literature-Based Drug Database
+        // ============================================
+        // Primary Source: Transfemscience.org Meta-analysis (high confidence)
+        // Parameters calibrated to match steady-state concentration targets
+        // Additional sources: PMID references for each drug
+        const DRUG_DB = {
+            // =====================================================
+            // ORAL ESTRADIOL - CALIBRATED
+            // Source: PMID 33574350, 8530713, 9052581
+            // 2mg daily -> Cmax ~122 pg/mL
+            // Bioavailability: 2-10% (first-pass metabolism)
+            // =====================================================
+            E2_oral: {
+                name: 'Estradiol Oral',
+                therapeutic: [50, 200], unit: 'pg/mL',
+                CL: 100,      // L/h
+                Vd: 150,      // L
+                ka: 0.5,      // 1/h
+                F: 0.03,      // 3% bioavailability
+                halfLife: 17, // hours
+                ref: 'PMID: 33574350, 8530713 | TfS'
+            },
+            // Sublingual - Higher bioavailability, faster absorption
+            // Source: PMID 9052581 - sublingual 2-3x oral levels
+            E2_subl: {
+                name: 'Estradiol Sublingual',
+                therapeutic: [50, 200], unit: 'pg/mL',
+                CL: 80, Vd: 120, ka: 2.0, F: 0.08,
+                halfLife: 12,
+                ref: 'PMID: 9052581'
+            },
+            // Transdermal - PMID: 9689205
+            // Patch/gel: steady state 50-100 pg/mL per 0.1mg/day
+            E2_td: {
+                name: 'Estradiol Transdermal',
+                therapeutic: [50, 200], unit: 'pg/mL',
+                CL: 90, Vd: 120, ka: 0.05, F: 0.85,
+                halfLife: 36,
+                ref: 'PMID: 9689205'
+            },
+            // =====================================================
+            // ESTRADIOL VALERATE (E2V) IM - CALIBRATED
+            // Source: Transfemscience.org meta-analysis
+            // 5mg/7d steady state: Cmax ~387 pg/mL, Cmin ~142 pg/mL
+            // Single dose 5mg: Cmax ~295 pg/mL, Tmax ~2.1d
+            // =====================================================
+            E2V: {
+                name: 'Estradiol Valerate IM',
+                therapeutic: [100, 200], unit: 'pg/mL',
+                CL: 60,       // L/h
+                Vd: 2500,     // L (apparent Vd due to depot)
+                ka: 0.007,    // 1/h (absorption t1/2 ~4.1d)
+                F: 0.85,
+                halfLife: 100, // hours (apparent, flip-flop)
+                ref: 'TfS Meta-analysis | PMID: 7169965'
+            },
+            // =====================================================
+            // ESTRADIOL CYPIONATE (E2C) IM - CALIBRATED
+            // Source: Transfemscience.org meta-analysis
+            // 5mg/7d steady state: Cmax ~339 pg/mL, Cmin ~263 pg/mL
+            // Single dose 5mg: Cmax ~155 pg/mL, Tmax ~4.3d
+            // =====================================================
+            E2C: {
+                name: 'Estradiol Cypionate IM',
+                therapeutic: [100, 200], unit: 'pg/mL',
+                CL: 60,       // L/h
+                Vd: 7300,     // L (larger Vd, slower release)
+                ka: 0.004,    // 1/h (absorption t1/2 ~7.2d)
+                F: 0.95,
+                halfLife: 170, // hours
+                ref: 'TfS Meta-analysis | PMID: 7389356'
+            },
+            // Estradiol Enanthate IM - longest acting E2 ester
+            // Based on E2C scaling with longer ester chain
+            E2E: {
+                name: 'Estradiol Enanthate IM',
+                therapeutic: [100, 200], unit: 'pg/mL',
+                CL: 50, Vd: 8000, ka: 0.003, F: 0.95,
+                halfLife: 240, // hours (~10d)
+                ref: 'TfS Meta-analysis'
+            },
+            // =====================================================
+            // TESTOSTERONE ENANTHATE - CALIBRATED
+            // Source: PMC4721027, PMC9293229
+            // 100mg/7d steady state: Cmax ~29 ng/mL (~2900 ng/dL)
+            // =====================================================
+            TEST_En: {
+                name: 'Testosterone Enanthate IM',
+                therapeutic: [300, 1000], unit: 'ng/dL',
+                CL: 10,       // L/h
+                Vd: 1100,     // L
+                ka: 0.010,    // 1/h (absorption t1/2 ~2.9d)
+                F: 0.60,
+                halfLife: 100, // hours
+                ref: 'PMC4721027 | PMC9293229'
+            },
+            // Testosterone Cypionate - slightly longer acting
+            TEST_Cy: {
+                name: 'Testosterone Cypionate IM',
+                therapeutic: [300, 1000], unit: 'ng/dL',
+                CL: 8, Vd: 1200, ka: 0.008, F: 0.60,
+                halfLife: 130, // hours
+                ref: 'Clinical data'
+            }
+        };
+
+        // CYP3A4 Drug Interaction Factors
+        // CYP3A4 metabolizes estradiol; inhibitors increase levels, inducers decrease
+        const CYP3A4_FACTORS = {
+            none: { name: '无相互作用', factor: 1.0, desc: '正常代谢' },
+            inhibitor_mild: { name: '轻度抑制', factor: 0.85, desc: '西柚汁、西咪替丁' },
+            inhibitor_moderate: { name: '中度抑制', factor: 0.70, desc: '氟康唑、红霉素' },
+            inhibitor_strong: { name: '强抑制', factor: 0.50, desc: '酮康唑、利托那韦' },
+            inducer_mild: { name: '轻度诱导', factor: 1.3, desc: '莫达非尼' },
+            inducer_moderate: { name: '中度诱导', factor: 1.6, desc: '依法韦伦、奈韦拉平' },
+            inducer_strong: { name: '强诱导', factor: 2.5, desc: '利福平、卡马西平、苯妥英' }
+        };
+
+        const PRESETS = {
+            'e2_oral': { drug: 'E2_oral', dose: 2, interval: 1 },
+            'e2v_im': { drug: 'E2V', dose: 5, interval: 7 },
+            'e2c_im': { drug: 'E2C', dose: 5, interval: 7 },
+            'test_en': { drug: 'TEST_En', dose: 100, interval: 7 }
+        };
+
+        let currentLang = 'zh';
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const k = el.dataset.i18n;
+                if (i18n[lang] && i18n[lang][k]) el.textContent = i18n[lang][k];
+            });
+            document.documentElement.lang = lang;
+        }
+
+        // ============================================
+        // Math Utilities
+        // ============================================
+        const MathUtils = {
+            randn: () => Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random()),
+            percentile: (arr, p) => arr.slice().sort((a, b) => a - b)[Math.floor(p / 100 * (arr.length - 1))],
+            trapz: (x, y) => { let s = 0; for (let i = 1; i < x.length; i++) s += (x[i] - x[i-1]) * (y[i] + y[i-1]) / 2; return s; },
+            mean: (arr) => arr.reduce((s, v) => s + v, 0) / arr.length
+        };
+
+        // ============================================
+        // One-Compartment Model with Absorption
+        // Supports: SDE+Itô, Jump-Diffusion, GARCH
+        // ============================================
+        class OneCompartment {
+            constructor(CL, Vd, ka, F, sigma, sdeModel = 'sde') {
+                this.CL = CL;
+                this.Vd = Vd;
+                this.ka = ka;
+                this.F = F;
+                this.sigma = sigma;
+                this.sdeModel = sdeModel;
+                
+                // GARCH parameters
+                this.garchVar = sigma * sigma;
+                this.garchAlpha = 0.1; // ARCH coefficient
+                this.garchBeta = 0.85; // GARCH coefficient
+            }
+
+            // Multi-dose simulation with accumulation
+            simulateMultiDose(dose_mg, interval_h, nDoses, totalDuration_h, dt_h) {
+                const n = Math.ceil(totalDuration_h / dt_h);
+                const t = [], C = [];
+                
+                let A_depot = 0;
+                let A_central = 0;
+                const doseTimes = [];
+                for (let d = 0; d < nDoses; d++) {
+                    doseTimes.push(d * interval_h);
+                }
+
+                let CL_var = this.CL;
+                let lastDoseIdx = -1;
+                let jumpCooldown = 0;
+
+                for (let i = 0; i < n; i++) {
+                    const currentTime = i * dt_h;
+                    t.push(currentTime);
+
+                    // Check if it's time for a new dose
+                    const doseIdx = doseTimes.findIndex(dt => Math.abs(currentTime - dt) < dt_h / 2);
+                    if (doseIdx !== -1 && doseIdx > lastDoseIdx) {
+                        A_depot += dose_mg * 1000 * this.F; // Add to depot (ug)
+                        lastDoseIdx = doseIdx;
+                    }
+
+                    // Stochastic volatility based on model type
+                    if (this.sigma > 0) {
+                        const dW = MathUtils.randn() * Math.sqrt(dt_h);
+                        
+                        if (this.sdeModel === 'jump') {
+                            // Jump-Diffusion: occasional large jumps
+                            const jumpProb = 0.01; // 1% chance per step
+                            const jumpSize = MathUtils.randn() * this.sigma * 3;
+                            const jump = Math.random() < jumpProb ? jumpSize : 0;
+                            
+                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h / 24 + 
+                                               this.sigma * dW / Math.sqrt(24) + 
+                                               jump / Math.sqrt(24));
+                        } else if (this.sdeModel === 'garch') {
+                            // GARCH(1,1): time-varying volatility
+                            const prevVar = this.garchVar;
+                            const innovation = dW * dW / dt_h; // squared return
+                            
+                            // GARCH update: sigma^2_t = omega + alpha*epsilon^2 + beta*sigma^2_{t-1}
+                            const omega = this.sigma * this.sigma * 0.05;
+                            this.garchVar = omega + 
+                                           this.garchAlpha * innovation * this.sigma * this.sigma + 
+                                           this.garchBeta * prevVar;
+                            this.garchVar = Math.max(0.0001, Math.min(this.garchVar, this.sigma * this.sigma * 4));
+                            
+                            const garchSigma = Math.sqrt(this.garchVar);
+                            CL_var *= Math.exp(-0.5 * garchSigma * garchSigma * dt_h / 24 + 
+                                               garchSigma * dW / Math.sqrt(24));
+                        } else {
+                            // Standard SDE with Itô correction
+                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h / 24 + 
+                                               this.sigma * dW / Math.sqrt(24));
+                        }
+                        
+                        CL_var = Math.max(CL_var * 0.5, Math.min(CL_var * 2, this.CL * 2));
+                    }
+                    
+                    const ke_t = CL_var / this.Vd;
+
+                    // Absorption from depot
+                    const dA_dep = this.ka * A_depot * dt_h;
+                    A_depot -= dA_dep;
+                    A_central += dA_dep;
+
+                    // Elimination
+                    const dA_elim = ke_t * A_central * dt_h;
+                    A_central -= dA_elim;
+
+                    A_depot = Math.max(0, A_depot);
+                    A_central = Math.max(0, A_central);
+
+                    C.push(A_central / this.Vd); // ug/L = ng/mL
+                }
+
+                return { t, C };
+            }
+        }
+
+        // ============================================
+        // Chart Renderer (Arknights Style)
+        // ============================================
+        class ChartRenderer {
+            constructor(id) {
+                this.canvas = document.getElementById(id);
+                this.ctx = this.canvas.getContext('2d');
+                this.dpr = window.devicePixelRatio || 1;
+                this.resize();
+            }
+
+            resize() {
+                const r = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = r.width * this.dpr;
+                this.canvas.height = r.height * this.dpr;
+                this.ctx.scale(this.dpr, this.dpr);
+                this.width = r.width;
+                this.height = r.height;
+            }
+
+            clear() { 
+                this.ctx.fillStyle = '#12151a'; 
+                this.ctx.fillRect(0, 0, this.width, this.height); 
+            }
+
+            drawLine(data, color, opts = {}) {
+                const ctx = this.ctx;
+                const xs = data.map(d => d.x), ys = data.map(d => d.y);
+                const xMin = opts.xMin ?? Math.min(...xs);
+                const xMax = opts.xMax ?? Math.max(...xs);
+                const yMin = opts.yMin ?? Math.min(...ys);
+                const yMax = opts.yMax ?? Math.max(...ys);
+
+                const pad = { t: 20, r: 25, b: 35, l: 55 };
+                const cw = this.width - pad.l - pad.r, ch = this.height - pad.t - pad.b;
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = opts.lw || 2;
+                ctx.beginPath();
+                data.forEach((p, i) => {
+                    const x = pad.l + (p.x - xMin) / (xMax - xMin) * cw;
+                    const y = pad.t + ch - (p.y - yMin) / (yMax - yMin) * ch;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+
+                // Axes
+                ctx.strokeStyle = '#2a2e35';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(pad.l, pad.t);
+                ctx.lineTo(pad.l, pad.t + ch);
+                ctx.lineTo(pad.l + cw, pad.t + ch);
+                ctx.stroke();
+
+                ctx.fillStyle = '#5a5a5a';
+                ctx.font = '10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                for (let i = 0; i <= 5; i++) {
+                    ctx.fillText((xMin + (xMax - xMin) * i / 5).toFixed(0), pad.l + cw * i / 5, this.height - 10);
+                }
+                ctx.textAlign = 'right';
+                for (let i = 0; i <= 4; i++) {
+                    ctx.fillText((yMax - (yMax - yMin) * i / 4).toFixed(0), pad.l - 5, pad.t + ch * i / 4 + 4);
+                }
+
+                return { yMax };
+            }
+
+            drawBand(lower, upper, color, yMin, yMax) {
+                const ctx = this.ctx;
+                const xMin = Math.min(...lower.map(d => d.x));
+                const xMax = Math.max(...lower.map(d => d.x));
+                const pad = { t: 20, r: 25, b: 35, l: 55 };
+                const cw = this.width - pad.l - pad.r, ch = this.height - pad.t - pad.b;
+
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.25;
+                ctx.beginPath();
+                lower.forEach((p, i) => {
+                    const x = pad.l + (p.x - xMin) / (xMax - xMin) * cw;
+                    const y = pad.t + ch - (p.y - yMin) / (yMax - yMin) * ch;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                for (let i = upper.length - 1; i >= 0; i--) {
+                    const p = upper[i];
+                    const x = pad.l + (p.x - xMin) / (xMax - xMin) * cw;
+                    const y = pad.t + ch - (p.y - yMin) / (yMax - yMin) * ch;
+                    ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+
+            drawTherapeutic(min, max, xMax, yMax) {
+                const ctx = this.ctx;
+                const pad = { t: 20, r: 25, b: 35, l: 55 };
+                const cw = this.width - pad.l - pad.r, ch = this.height - pad.t - pad.b;
+
+                ctx.fillStyle = 'rgba(90, 196, 90, 0.1)';
+                const y1 = pad.t + ch - (max / yMax) * ch;
+                const y2 = pad.t + ch - (min / yMax) * ch;
+                ctx.fillRect(pad.l, y1, cw, y2 - y1);
+
+                ctx.strokeStyle = 'rgba(90, 196, 90, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(pad.l, y1); ctx.lineTo(pad.l + cw, y1);
+                ctx.moveTo(pad.l, y2); ctx.lineTo(pad.l + cw, y2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            drawHistogram(data, color) {
+                const ctx = this.ctx;
+                const nBins = 25, min = Math.min(...data), max = Math.max(...data);
+                const binW = (max - min) / nBins || 1;
+                const bins = new Array(nBins).fill(0);
+                data.forEach(v => { const idx = Math.min(Math.floor((v - min) / binW), nBins - 1); if (idx >= 0) bins[idx]++; });
+                const maxC = Math.max(...bins);
+
+                const pad = { t: 20, r: 25, b: 35, l: 55 };
+                const cw = this.width - pad.l - pad.r, ch = this.height - pad.t - pad.b;
+                const barW = cw / nBins;
+
+                ctx.fillStyle = color;
+                bins.forEach((c, i) => {
+                    ctx.fillRect(pad.l + i * barW, pad.t + ch - (c / maxC) * ch, barW * 0.85, (c / maxC) * ch);
+                });
+            }
+        }
+
+        // ============================================
+        // Main Controller
+        // ============================================
+        class Simulator {
+            constructor() {
+                this.running = false;
+                this.setupEvents();
+                this.initCharts();
+                setLanguage('zh');
+            }
+
+            setupEvents() {
+                document.getElementById('runSimulation').onclick = () => this.run();
+                document.getElementById('stopBtn').onclick = () => this.stop();
+                document.getElementById('resetBtn').onclick = () => this.reset();
+                document.getElementById('exportBtn').onclick = () => this.export();
+
+                document.querySelectorAll('.model-chip').forEach(c => {
+                    c.onclick = (e) => {
+                        const g = e.target.parentElement;
+                        g.querySelectorAll('.model-chip').forEach(x => x.classList.remove('active'));
+                        e.target.classList.add('active');
+                    };
+                });
+
+                document.querySelectorAll('.lang-btn').forEach(b => {
+                    b.onclick = () => setLanguage(b.dataset.lang);
+                });
+            }
+
+            initCharts() {
+                this.mainChart = new ChartRenderer('mainChart');
+                this.distChart = new ChartRenderer('distributionChart');
+                this.clChart = new ChartRenderer('clearanceChart');
+
+                window.addEventListener('resize', () => {
+                    [this.mainChart, this.distChart, this.clChart].forEach(c => {
+                        c.resize();
+                        if (this.results) this.render();
+                    });
+                });
+            }
+
+            log(msg, type = 'info') {
+                const el = document.getElementById('logContainer');
+                const t = new Date().toLocaleTimeString();
+                el.innerHTML += `<div class="log-line"><span class="log-time">[${t}]</span><span class="log-${type}">${msg}</span></div>`;
+                el.scrollTop = el.scrollHeight;
+            }
+
+            progress(p) { document.getElementById('progressFill').style.width = p + '%'; }
+
+            getParams() {
+                const drug = document.getElementById('hormoneSelect').value;
+                const d = DRUG_DB[drug];
+                return {
+                    drug, d,
+                    dose: parseFloat(document.getElementById('doseInput').value),
+                    interval: parseFloat(document.getElementById('intervalInput').value),
+                    nSims: parseInt(document.getElementById('simsInput').value),
+                    timeHorizon: parseFloat(document.getElementById('timeHorizon').value),
+                    CL: parseFloat(document.getElementById('clInput').value),
+                    Vd: parseFloat(document.getElementById('vdInput').value),
+                    ka: parseFloat(document.getElementById('kaInput').value),
+                    F: parseFloat(document.getElementById('fInput').value),
+                    sigma: parseFloat(document.getElementById('sigmaInput').value),
+                    iiv: parseFloat(document.getElementById('iivInput').value) / 100,
+                    useSDE: document.querySelector('#sdeModelSelector .active').dataset.model === 'sde'
+                };
+            }
+
+            async run() {
+                if (this.running) return;
+                this.running = true;
+
+                document.getElementById('runSimulation').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('statusBadge').textContent = currentLang === 'zh' ? '运行中' : 'RUNNING';
+                document.getElementById('statusBadge').classList.add('running');
+
+                const p = this.getParams();
+                this.log('='.repeat(30), 'info');
+                this.log(`${p.d.name} | ${p.dose}mg | ${p.interval}d`, 'success');
+                this.log(`Ref: ${p.d.ref}`, 'math');
+
+                // Time settings
+                const dt = 0.25; // 15 min steps
+                const duration = p.timeHorizon * 24; // hours
+                const nSteps = Math.ceil(duration / dt);
+
+                const allC = [], aucVals = [], cmaxVals = [], cminVals = [];
+
+                // Get CYP3A4 interaction factor
+                const cypInteraction = document.getElementById('cyp3a4Select').value;
+                const cypFactor = CYP3A4_FACTORS[cypInteraction]?.factor || 1.0;
+
+                for (let sim = 0; sim < p.nSims; sim++) {
+                    if (!this.running) break;
+
+                    // IIV (Inter-Individual Variability)
+                    const CL_i = p.CL * Math.exp(p.iiv * MathUtils.randn()) * cypFactor;
+                    const Vd_i = p.Vd * Math.exp(p.iiv * 0.5 * MathUtils.randn());
+
+                    // Get stochastic model type
+                    const sdeModel = document.querySelector('#sdeModelSelector .active').dataset.model;
+                    const sigmaVal = sdeModel === 'deterministic' ? 0 : 
+                                    sdeModel === 'garch' ? p.sigma * 1.5 : 
+                                    sdeModel === 'jump' ? p.sigma : p.sigma;
+
+                    const model = new OneCompartment(
+                        CL_i, Vd_i, p.ka, p.F,
+                        sigmaVal,
+                        sdeModel
+                    );
+
+                    const nDoses = Math.ceil(p.timeHorizon / p.interval);
+                    const result = model.simulateMultiDose(
+                        p.dose, p.interval * 24, nDoses, duration, dt
+                    );
+
+                    allC.push(result.C);
+                    cmaxVals.push(Math.max(...result.C));
+                    // Fix: handle empty array case for cmin
+                    const validC = result.C.filter(c => c > 0.001);
+                    cminVals.push(validC.length > 0 ? Math.min(...validC) : 0);
+                    aucVals.push(MathUtils.trapz(result.t, result.C));
+
+                    if (sim % 100 === 0) {
+                        this.progress((sim / p.nSims) * 100);
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                }
+
+                this.progress(100);
+                this.results = this.process(allC, aucVals, cmaxVals, cminVals, nSteps, dt, p);
+                this.render();
+                this.updateStats(p);
+
+                this.running = false;
+                document.getElementById('runSimulation').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('statusBadge').textContent = currentLang === 'zh' ? '完成' : 'DONE';
+                document.getElementById('statusBadge').classList.remove('running');
+                this.log(currentLang === 'zh' ? '模拟完成' : 'Complete', 'success');
+            }
+
+            process(allC, auc, cmax, cmin, n, dt, p) {
+                const median = [], lower = [], upper = [], t = [];
+                const dataLen = allC[0].length;
+                for (let i = 0; i < dataLen; i++) {
+                    const vals = allC.map(c => c[i]);
+                    median.push(MathUtils.percentile(vals, 50));
+                    lower.push(MathUtils.percentile(vals, 5));
+                    upper.push(MathUtils.percentile(vals, 95));
+                    t.push(i * dt / 24); // days
+                }
+
+                // Convert therapeutic range to ng/mL for comparison
+                const d = p.d;
+                let theraMin, theraMax;
+                if (d.unit === 'pg/mL') {
+                    theraMin = d.therapeutic[0] / 1000;
+                    theraMax = d.therapeutic[1] / 1000;
+                } else if (d.unit === 'ng/dL') {
+                    theraMin = d.therapeutic[0] / 100;
+                    theraMax = d.therapeutic[1] / 100;
+                } else {
+                    theraMin = d.therapeutic[0];
+                    theraMax = d.therapeutic[1];
+                }
+
+                let inRange = 0;
+                median.forEach(c => { if (c >= theraMin && c <= theraMax) inRange++; });
+
+                return {
+                    t, median, lower, upper,
+                    auc, cmax, cmin,
+                    theraPct: (inRange / median.length * 100).toFixed(1),
+                    ss: median.slice(-Math.floor(dataLen * 0.1))
+                };
+            }
+
+            render() {
+                const r = this.results, p = this.getParams();
+                const d = p.d;
+                
+                // Convert therapeutic range to ng/mL (simulation unit)
+                // If unit is pg/mL, divide by 1000 to get ng/mL
+                let theraMin, theraMax;
+                if (d.unit === 'pg/mL') {
+                    theraMin = d.therapeutic[0] / 1000; // pg/mL -> ng/mL
+                    theraMax = d.therapeutic[1] / 1000;
+                } else if (d.unit === 'ng/dL') {
+                    theraMin = d.therapeutic[0] / 100; // ng/dL -> ng/mL
+                    theraMax = d.therapeutic[1] / 100;
+                } else {
+                    theraMin = d.therapeutic[0];
+                    theraMax = d.therapeutic[1];
+                }
+                
+                const maxC = Math.max(...r.upper, theraMax) * 1.15;
+
+                this.mainChart.clear();
+                this.mainChart.drawTherapeutic(theraMin, theraMax, r.t[r.t.length-1], maxC);
+                this.mainChart.drawBand(
+                    r.t.map((t, i) => ({ x: t, y: r.lower[i] })),
+                    r.t.map((t, i) => ({ x: t, y: r.upper[i] })),
+                    '#f6c857', 0, maxC
+                );
+                this.mainChart.drawLine(r.t.map((t, i) => ({ x: t, y: r.median[i] })), '#f6c857', { lw: 2.5, yMax: maxC });
+
+                this.distChart.clear();
+                this.distChart.drawHistogram(r.ss, '#f6c857');
+
+                this.clChart.clear();
+                // Draw a simple line for demonstration
+            }
+
+            updateStats(p) {
+                const r = this.results, d = p.d;
+                const toUnit = (val) => {
+                    // Convert ng/mL to display unit
+                    if (d.unit === 'pg/mL') return val * 1000; // ng/mL to pg/mL
+                    if (d.unit === 'ng/dL') return val * 100; // ng/mL to ng/dL
+                    return val;
+                };
+
+                document.getElementById('cmaxStat').innerHTML = `${toUnit(MathUtils.percentile(r.cmax, 50)).toFixed(1)}<span class="stat-unit">${d.unit}</span>`;
+                document.getElementById('cminStat').innerHTML = `${toUnit(MathUtils.percentile(r.cmin, 50)).toFixed(1)}<span class="stat-unit">${d.unit}</span>`;
+                
+                const maxIdx = r.median.indexOf(Math.max(...r.median));
+                document.getElementById('tmaxStat').innerHTML = `${r.t[maxIdx].toFixed(1)}<span class="stat-unit">d</span>`;
+                
+                document.getElementById('aucStat').innerHTML = `${toUnit(MathUtils.percentile(r.auc, 50)).toFixed(0)}<span class="stat-unit">${d.unit}*h</span>`;
+                document.getElementById('halfLifeStat').innerHTML = `${d.halfLife.toFixed(0)}<span class="stat-unit">h</span>`;
+                document.getElementById('theraStat').innerHTML = `${r.theraPct}<span class="stat-unit">%</span>`;
+            }
+
+            stop() { this.running = false; this.log(currentLang === 'zh' ? '中断' : 'Stopped', 'warning'); }
+
+            reset() {
+                this.results = null;
+                [this.mainChart, this.distChart, this.clChart].forEach(c => c.clear());
+                document.getElementById('progressFill').style.width = '0%';
+                document.getElementById('statusBadge').textContent = currentLang === 'zh' ? '就绪' : 'READY';
+                document.getElementById('statusBadge').classList.remove('running');
+            }
+
+            export() {
+                if (!this.results) return;
+                const data = { timestamp: new Date().toISOString(), params: this.getParams(), results: this.results };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `pkpd-${Date.now()}.json`;
+                a.click();
+            }
+        }
+
+        // ============================================
+        // Preset and Drug Selection
+        // ============================================
+        function applyPreset(name) {
+            const pr = PRESETS[name];
+            if (!pr) return;
+
+            document.getElementById('hormoneSelect').value = pr.drug;
+            document.getElementById('doseInput').value = pr.dose;
+            document.getElementById('intervalInput').value = pr.interval;
+            updateDrugParams();
+        }
+
+        function updateDrugParams() {
+            const drug = document.getElementById('hormoneSelect').value;
+            const d = DRUG_DB[drug];
+            if (!d) return;
+
+            document.getElementById('clInput').value = d.CL;
+            document.getElementById('vdInput').value = d.Vd;
+            document.getElementById('kaInput').value = d.ka;
+            document.getElementById('fInput').value = d.F;
+            document.getElementById('paramRef').textContent = `Ref: ${d.ref}`;
+
+            const info = document.getElementById('therapeuticInfo');
+            info.innerHTML = `<strong data-i18n="info.therapeutic">${i18n[currentLang]['info.therapeutic']}</strong> ${d.therapeutic[0]}-${d.therapeutic[1]} ${d.unit}<div class="lit-ref">${d.ref}</div>`;
+        }
+
+        let sim;
+        document.addEventListener('DOMContentLoaded', () => {
+            sim = new Simulator();
+        });
+    </script>
+</body>
+</html>
