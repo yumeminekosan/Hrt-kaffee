@@ -1742,21 +1742,26 @@
             // Störmer-Verlet 2nd order symplectic integrator
             // Preserves phase space volume - satisfies chain rule
             stormerVerletStep(A_depot, A_central, CL_var, dt, dW = 0) {
-                // Step 1: Half step momentum update (p += -dV/dq * dt/2)
+                // =====================================================
+                // Störmer-Verlet symplectic integrator
+                // 
+                // IMPORTANT: CL_var already contains stochastic variation!
+                // Applied in main loop: CL_var *= exp(sigma * dW - 0.5*sigma²*dt)
+                // Here we only do deterministic symplectic integration.
+                // =====================================================
+                
                 const ke = CL_var / this.Vd;
-                const sigmaFactor = this.sigma > 0 ? Math.exp(this.sigma * dW - 0.5 * this.sigma * this.sigma * dt) : 1;
                 
-                // Half-step elimination
-                const A_central_half = A_central * Math.exp(-ke * dt / 2 * sigmaFactor);
+                // Half-step elimination (symplectic kick)
+                const A_central_half = A_central * Math.exp(-ke * dt / 2);
                 
-                // Step 2: Full step position update (q += p * dt / m)
-                // Absorption from depot
+                // Full step absorption
                 const dA_dep = this.ka * A_depot * dt;
                 const A_depot_new = A_depot - dA_dep;
                 const A_central_mid = A_central_half + dA_dep;
                 
-                // Step 3: Half step momentum update
-                const A_central_new = A_central_mid * Math.exp(-ke * dt / 2 * sigmaFactor);
+                // Half-step elimination (symplectic kick)
+                const A_central_new = A_central_mid * Math.exp(-ke * dt / 2);
                 
                 return { 
                     A_depot: Math.max(0, A_depot_new), 
@@ -1808,66 +1813,56 @@
             // Heun's method for Stratonovich SDE (2nd order)
             // Predictor-Corrector scheme preserving chain rule
             heunStratonovichStep(A_depot, A_central, CL_var, dt, dW) {
-                const ke = CL_var / this.Vd;
+                // =====================================================
+                // Heun's method (deterministic with stochastic CL)
+                // 
+                // IMPORTANT: CL_var already contains stochastic variation!
+                // The random factor is applied in the main loop:
+                //   CL_var *= exp(sigma * dW)
+                // 
+                // Here we only do deterministic integration with CL_var
+                // DO NOT apply another random factor!
+                // =====================================================
                 
-                // =====================================================
-                // Heun's method for Stratonovich SDE
-                // For multiplicative noise: dC = drift*dt + sigma*C*dW
-                // Stratonovich interpretation satisfies ordinary chain rule
-                // Predictor-Corrector with midpoint evaluation
-                // =====================================================
+                const ke = CL_var / this.Vd;
                 
                 // Predictor step (Euler)
                 const dA_dep_pred = this.ka * A_depot * dt;
                 const A_dep_pred = Math.max(0, A_depot - dA_dep_pred);
                 const A_cent_pred = A_central + dA_dep_pred - ke * A_central * dt;
                 
-                // Stratonovich stochastic term (no Ito correction needed)
-                // For Stratonovich: the integrand is evaluated at midpoint
-                const stochFactor = Math.exp(this.sigma * dW);
-                const A_cent_pred_stoch = A_cent_pred * stochFactor;
-                
                 // Corrector step (trapezoidal average)
                 const dA_dep_corr = this.ka * (A_depot + A_dep_pred) * dt / 2;
-                const dA_elim_corr = ke * (A_central + A_cent_pred_stoch) * dt / 2;
+                const dA_elim_corr = ke * (A_central + A_cent_pred) * dt / 2;
                 
                 const A_depot_new = Math.max(0, A_depot - dA_dep_corr);
                 const A_central_new = Math.max(0, A_central + dA_dep_corr - dA_elim_corr);
                 
-                // Apply stochastic factor once (Stratonovich interpretation)
-                const A_central_final = A_central_new * stochFactor;
-                
-                return { A_depot: A_depot_new, A_central: Math.max(0, A_central_final) };
+                // No additional stochastic factor - CL_var already has it!
+                return { A_depot: A_depot_new, A_central: Math.max(0, A_central_new) };
             }
 
             // Milstein method for Stratonovich SDE (strong order 1.0)
             // Includes correction term for better accuracy
             milsteinStratonovichStep(A_depot, A_central, CL_var, dt, dW) {
+                // =====================================================
+                // Milstein method (deterministic with stochastic CL)
+                // 
+                // IMPORTANT: CL_var already contains stochastic variation!
+                // Here we only do deterministic integration with CL_var.
+                // No additional stochastic terms needed.
+                // =====================================================
+                
                 const ke = CL_var / this.Vd;
                 
                 // Absorption from depot
                 const dA_dep = this.ka * A_depot * dt;
                 const A_depot_new = Math.max(0, A_depot - dA_dep);
                 
-                // =====================================================
-                // Milstein method for Stratonovich SDE (strong order 1.0)
-                // For dC = drift*dt + sigma*C*dW (Stratonovich)
-                // Milstein adds correction: 0.5*sigma^2*C*(dW^2 - dt)
-                // Stratonovich needs: -0.5*sigma^2*C*dt (no Ito correction)
-                // =====================================================
-                
+                // Simple deterministic elimination
                 const drift = -ke * A_central * dt;
-                const diffusion = this.sigma * A_central * dW;
                 
-                // Milstein correction term: 0.5 * σ² * (dW² - dt)
-                const milsteinCorrection = 0.5 * this.sigma * this.sigma * A_central * (dW * dW - dt);
-                
-                // For Stratonovich, subtract the Ito correction
-                // (Ito includes +0.5*sigma^2*dt, Stratonovich does not)
-                const stratonovichCorrection = -0.5 * this.sigma * this.sigma * A_central * dt;
-                
-                const A_central_mid = A_central + dA_dep + drift + diffusion + milsteinCorrection + stratonovichCorrection;
-                const A_central_new = Math.max(0, A_central_mid);
+                const A_central_new = Math.max(0, A_central + dA_dep + drift);
                 
                 return { A_depot: A_depot_new, A_central: A_central_new };
             }
@@ -1906,10 +1901,10 @@
                 const dA_central_deterministic = (k1_cent + 2*k2_cent + 2*k3_cent + k4_cent) * dt / 6;
                 
                 // Add Stratonovich stochastic term
-                const sigmaFactor = this.sigma * dW - 0.5 * this.sigma * this.sigma * dt;
+// RK4 with stochastic CL - no additional sigmaFactor needed
                 
                 const A_depot_new = Math.max(0, A_depot + dA_depot);
-                const A_central_new = Math.max(0, (A_central + dA_central_deterministic) * Math.exp(sigmaFactor));
+                const A_central_new = Math.max(0, A_central + dA_central_deterministic);
                 
                 return { A_depot: A_depot_new, A_central: A_central_new };
             }
