@@ -1744,7 +1744,7 @@
             stormerVerletStep(A_depot, A_central, CL_var, dt, dW = 0) {
                 // Step 1: Half step momentum update (p += -dV/dq * dt/2)
                 const ke = CL_var / this.Vd;
-                const sigmaFactor = this.sigma > 0 ? Math.exp(this.sigma * dW / Math.sqrt(24) - 0.5 * this.sigma * this.sigma * dt / 24) : 1;
+                const sigmaFactor = this.sigma > 0 ? Math.exp(this.sigma * dW - 0.5 * this.sigma * this.sigma * dt) : 1;
                 
                 // Half-step elimination
                 const A_central_half = A_central * Math.exp(-ke * dt / 2 * sigmaFactor);
@@ -1810,26 +1810,32 @@
             heunStratonovichStep(A_depot, A_central, CL_var, dt, dW) {
                 const ke = CL_var / this.Vd;
                 
-                // Predictor (Euler step)
+                // =====================================================
+                // Heun's method for Stratonovich SDE
+                // For multiplicative noise: dC = drift*dt + sigma*C*dW
+                // Stratonovich interpretation satisfies ordinary chain rule
+                // Predictor-Corrector with midpoint evaluation
+                // =====================================================
+                
+                // Predictor step (Euler)
                 const dA_dep_pred = this.ka * A_depot * dt;
-                const A_dep_pred = A_depot - dA_dep_pred;
+                const A_dep_pred = Math.max(0, A_depot - dA_dep_pred);
                 const A_cent_pred = A_central + dA_dep_pred - ke * A_central * dt;
                 
-                // Add stochastic term (Stratonovich midpoint)
-                const sigmaFactor = this.sigma * dW / Math.sqrt(24);
-                const A_cent_pred_stoch = A_cent_pred * Math.exp(sigmaFactor - 0.5 * this.sigma * this.sigma * dt / 24);
+                // Stratonovich stochastic term (no Ito correction needed)
+                // For Stratonovich: the integrand is evaluated at midpoint
+                const stochFactor = Math.exp(this.sigma * dW);
+                const A_cent_pred_stoch = A_cent_pred * stochFactor;
                 
-                // Corrector (trapezoidal average)
-                const ke_pred = CL_var / this.Vd; // Could vary for nonlinear
+                // Corrector step (trapezoidal average)
                 const dA_dep_corr = this.ka * (A_depot + A_dep_pred) * dt / 2;
                 const dA_elim_corr = ke * (A_central + A_cent_pred_stoch) * dt / 2;
                 
                 const A_depot_new = Math.max(0, A_depot - dA_dep_corr);
                 const A_central_new = Math.max(0, A_central + dA_dep_corr - dA_elim_corr);
                 
-                // Apply Stratonovich correction (chain rule)
-                const chainRuleFactor = 1 - 0.5 * this.sigma * this.sigma * dt / 24;
-                const A_central_final = A_central_new * Math.exp(sigmaFactor) * chainRuleFactor;
+                // Apply stochastic factor once (Stratonovich interpretation)
+                const A_central_final = A_central_new * stochFactor;
                 
                 return { A_depot: A_depot_new, A_central: Math.max(0, A_central_final) };
             }
@@ -1838,21 +1844,27 @@
             // Includes correction term for better accuracy
             milsteinStratonovichStep(A_depot, A_central, CL_var, dt, dW) {
                 const ke = CL_var / this.Vd;
-                const dt_eff = dt / 24;
                 
                 // Absorption from depot
                 const dA_dep = this.ka * A_depot * dt;
                 const A_depot_new = Math.max(0, A_depot - dA_dep);
                 
-                // Central compartment with Milstein correction
+                // =====================================================
+                // Milstein method for Stratonovich SDE (strong order 1.0)
+                // For dC = drift*dt + sigma*C*dW (Stratonovich)
+                // Milstein adds correction: 0.5*sigma^2*C*(dW^2 - dt)
+                // Stratonovich needs: -0.5*sigma^2*C*dt (no Ito correction)
+                // =====================================================
+                
                 const drift = -ke * A_central * dt;
-                const diffusion = this.sigma * A_central * dW / Math.sqrt(24);
+                const diffusion = this.sigma * A_central * dW;
                 
                 // Milstein correction term: 0.5 * σ² * (dW² - dt)
-                const milsteinCorrection = 0.5 * this.sigma * this.sigma * A_central * (dW * dW - dt) / 24;
+                const milsteinCorrection = 0.5 * this.sigma * this.sigma * A_central * (dW * dW - dt);
                 
-                // Stratonovich correction: -0.5 * σ² * dt (for Itô → Stratonovich)
-                const stratonovichCorrection = -0.5 * this.sigma * this.sigma * A_central * dt / 24;
+                // For Stratonovich, subtract the Ito correction
+                // (Ito includes +0.5*sigma^2*dt, Stratonovich does not)
+                const stratonovichCorrection = -0.5 * this.sigma * this.sigma * A_central * dt;
                 
                 const A_central_mid = A_central + dA_dep + drift + diffusion + milsteinCorrection + stratonovichCorrection;
                 const A_central_new = Math.max(0, A_central_mid);
@@ -1894,7 +1906,7 @@
                 const dA_central_deterministic = (k1_cent + 2*k2_cent + 2*k3_cent + k4_cent) * dt / 6;
                 
                 // Add Stratonovich stochastic term
-                const sigmaFactor = this.sigma * dW / Math.sqrt(24) - 0.5 * this.sigma * this.sigma * dt / 24;
+                const sigmaFactor = this.sigma * dW - 0.5 * this.sigma * this.sigma * dt;
                 
                 const A_depot_new = Math.max(0, A_depot + dA_depot);
                 const A_central_new = Math.max(0, (A_central + dA_central_deterministic) * Math.exp(sigmaFactor));
@@ -2006,24 +2018,24 @@
                             const jumpProb = 0.01;
                             const jumpSize = MathUtils.randn() * this.sigma * 3;
                             const jump = Math.random() < jumpProb ? jumpSize : 0;
-                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h / 24 + 
-                                              this.sigma * dW / Math.sqrt(24) + jump / Math.sqrt(24));
+                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h + 
+                                              this.sigma * dW + jump);
                         } else if (this.sdeModel === 'garch') {
                             const innovation = dW * dW / dt_h;
                             const omega = this.sigma * this.sigma * 0.05;
                             this.garchVar = omega + this.garchAlpha * innovation * this.sigma * this.sigma + this.garchBeta * this.garchVar;
                             this.garchVar = Math.max(0.0001, Math.min(this.garchVar, this.sigma * this.sigma * 4));
                             const garchSigma = Math.sqrt(this.garchVar);
-                            CL_var *= Math.exp(-0.5 * garchSigma * garchSigma * dt_h / 24 + garchSigma * dW / Math.sqrt(24));
+                            CL_var *= Math.exp(-0.5 * garchSigma * garchSigma * dt_h + garchSigma * dW);
                         } else if (this.sdeModel === 'symplectic') {
                             // Symplectic integration with Poisson jumps
-                            CL_var *= Math.exp(this.sigma * dW / Math.sqrt(24) - 0.5 * this.sigma * this.sigma * dt_h / 24 + poissonJump);
+                            CL_var *= Math.exp(this.sigma * dW - 0.5 * this.sigma * this.sigma * dt_h + poissonJump);
                         } else if (this.sdeModel === 'stratonovich') {
                             // Stratonovich: chain rule satisfied naturally
                             // No Itô correction needed
-                            CL_var *= Math.exp(this.sigma * dW / Math.sqrt(24));
+                            CL_var *= Math.exp(this.sigma * dW);
                         } else {
-                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h / 24 + this.sigma * dW / Math.sqrt(24));
+                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h + this.sigma * dW);
                         }
                         
                         CL_var = Math.max(CL_var * 0.5, Math.min(CL_var * 2, this.CL * 2));
