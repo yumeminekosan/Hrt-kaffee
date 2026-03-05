@@ -49,3 +49,24 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Database files
+*.db
+*.db-journal
+db/
+
+# Upload directory (user uploaded files)
+upload/
+
+# Temporary search/article data
+search_*.json
+*_article.json
+
+# Work logs
+worklog.md
+agent-ctx/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
