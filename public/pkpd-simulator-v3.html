@@ -2708,7 +2708,7 @@
                 
                 // Log comparison with literature
                 this.log(`Cmax=${cmaxMed.toFixed(1)} ${d.unit} | Cmin=${cminMed.toFixed(1)} ${d.unit} | Tmax=${tmaxHours.toFixed(1)}h`, 'info');
-            },
+            }
 
             stop() { this.running = false; this.log(currentLang === 'zh' ? '中断' : 'Stopped', 'warning'); }
 
