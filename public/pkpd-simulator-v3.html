@@ -3128,7 +3128,7 @@
                     } else {
                         C = (dose_ug * ka / (Vd * (ka - ke))) * (Math.exp(-ke * t) - Math.exp(-ka * t));
                     }
-                    concentrations.push(Math.max(0, C * 1000)); // microg/mL to pg/mL
+                    concentrations.push(Math.max(0, C * 1000000)); // μg/mL to pg/mL (1μg = 1000000pg)
                 }
             }
             return concentrations;
