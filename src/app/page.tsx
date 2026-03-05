@@ -1,15 +1,18 @@
-import { SimulatorContainer } from '@/components/simulator';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push('/pkpd-simulator-v3.html');
+  }, [router]);
+
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-2">HRT PK/PD 模拟器</h1>
-          <p className="text-muted-foreground">跨性别女性激素替代疗法药代动力学模拟工具</p>
-        </div>
-        <SimulatorContainer />
-      </div>
-    </main>
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-muted-foreground">正在跳转到PKPD模拟器...</p>
+    </div>
   );
 }
