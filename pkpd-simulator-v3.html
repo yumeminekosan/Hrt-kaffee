@@ -784,7 +784,162 @@
                 </div>
             </div>
 
+            
             <!-- ===================================================== -->
+            <!-- BAYESIAN PK PARAMETER ESTIMATION MODULE - RHODES ISLAND TECH -->
+            <!-- 贝叶斯药代动力学参数估计模块 - 源石科技风格 -->
+            <!-- Uses individual blood concentration data to estimate PK parameters -->
+            <!-- Based on MCMC (Markov Chain Monte Carlo) method -->
+            <!-- ===================================================== -->
+            <div class="panel pg-module" id="bayesianModule">
+                <div class="pg-header">
+                    <span class="pg-title">BAYESIAN ESTIMATOR</span>
+                    <span class="pg-badge">MCMC</span>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Drug Model</label>
+                    <select class="form-select" id="bayesianDrugSelect">
+                        <option value="E2V_oral">E2V Oral (Estradiol Valerate)</option>
+                        <option value="E2_oral">E2 Oral (Estradiol)</option>
+                        <option value="E2_subl">E2 Sublingual</option>
+                        <option value="E2V">E2V IM (Injection)</option>
+                        <option value="E2C">E2C IM (Injection)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Dosing History</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Dose <span class="unit">mg</span></label>
+                            <input type="number" class="form-input" id="bayesianDose" value="4" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Interval <span class="unit">h</span></label>
+                            <input type="number" class="form-input" id="bayesianInterval" value="12" step="1">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Concentration Data Input -->
+                <div class="param-group">
+                    <div class="param-group-title">
+                        <span>Blood Concentration Data</span>
+                        <button class="btn btn-secondary btn-sm" onclick="addConcentrationRow()" style="font-size: 0.6rem; padding: 0.2rem 0.5rem;">+ Add</button>
+                    </div>
+                    <div id="concentrationDataContainer" style="max-height: 150px; overflow-y: auto;">
+                        <div class="conc-data-header">
+                            <span>Time (h)</span>
+                            <span>Conc (pg/mL)</span>
+                            <span>Action</span>
+                        </div>
+                        <div id="concentrationDataRows">
+                            <!-- Data rows will be added dynamically -->
+                        </div>
+                    </div>
+                    <div class="info-box" style="margin-top: 0.5rem;">
+                        Enter time since last dose and measured concentration
+                    </div>
+                </div>
+                
+                <!-- Prior Distribution Settings -->
+                <div class="param-group">
+                    <div class="param-group-title">
+                        <span>Prior Distributions (Log-Normal)</span>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">CL Prior</label>
+                            <input type="number" class="form-input" id="priorCL" value="60" step="1">
+                            <span class="form-hint">L/h, CV=30%</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Vd Prior</label>
+                            <input type="number" class="form-input" id="priorVd" value="60" step="1">
+                            <span class="form-hint">L, CV=30%</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ka Prior</label>
+                            <input type="number" class="form-input" id="priorKa" value="0.04" step="0.01">
+                            <span class="form-hint">1/h, CV=50%</span>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">F Prior</label>
+                            <input type="number" class="form-input" id="priorF" value="0.03" step="0.005">
+                            <span class="form-hint">Bioavailability</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">σ Error</label>
+                            <input type="number" class="form-input" id="bayesianSigma" value="0.2" step="0.05">
+                            <span class="form-hint">Measurement CV</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Iterations</label>
+                            <input type="number" class="form-input" id="mcmcIterations" value="5000" step="1000">
+                            <span class="form-hint">MCMC steps</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- MCMC Controls -->
+                <div class="btn-group" style="margin-top: 0.5rem;">
+                    <button class="btn btn-primary btn-sm" onclick="runBayesianEstimation()" id="bayesianRunBtn">
+                        RUN MCMC
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="clearBayesianData()">
+                        Clear Data
+                    </button>
+                </div>
+                
+                <!-- Results Display -->
+                <div id="bayesianResults" style="display: none; margin-top: 0.75rem;">
+                    <div class="param-group">
+                        <div class="param-group-title">
+                            <span>Posterior Estimates</span>
+                        </div>
+                        <div class="bayesian-results-grid">
+                            <div class="bayesian-result-item">
+                                <span class="bayesian-param-name">CL</span>
+                                <span class="bayesian-param-value" id="posteriorCL">-</span>
+                                <span class="bayesian-param-ci" id="posteriorCLCI">-</span>
+                            </div>
+                            <div class="bayesian-result-item">
+                                <span class="bayesian-param-name">Vd</span>
+                                <span class="bayesian-param-value" id="posteriorVd">-</span>
+                                <span class="bayesian-param-ci" id="posteriorVdCI">-</span>
+                            </div>
+                            <div class="bayesian-result-item">
+                                <span class="bayesian-param-name">ka</span>
+                                <span class="bayesian-param-value" id="posteriorKa">-</span>
+                                <span class="bayesian-param-ci" id="posteriorKaCI">-</span>
+                            </div>
+                            <div class="bayesian-result-item">
+                                <span class="bayesian-param-name">F</span>
+                                <span class="bayesian-param-value" id="posteriorF">-</span>
+                                <span class="bayesian-param-ci" id="posteriorFCI">-</span>
+                            </div>
+                        </div>
+                        <div class="info-box" style="margin-top: 0.5rem;">
+                            <strong>MCMC Diagnostics:</strong>
+                            <div id="mcmcDiagnostics">-</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="applyBayesianParams()" style="width: 100%; margin-top: 0.5rem;">
+                        Apply to Simulator
+                    </button>
+                </div>
+                
+                <div class="pg-ref" id="bayesianRef">
+                    Bayesian estimation using Metropolis-Hastings MCMC
+                </div>
+            </div>
+
+
+
+            <!-- ===================================================== -->================================================ -->
             <!-- PROGESTOGEN INTERACTION MODULE - RHODES ISLAND TECH -->
             <!-- 独立孕激素相互作用计算模块 - 源石科技风格 -->
             <!-- Based on Hill equation for enzyme inhibition -->
@@ -2905,6 +3060,257 @@
                 });
             });
         });
+    
+        // =====================================================
+        // BAYESIAN PK PARAMETER ESTIMATION MODULE
+        // Uses MCMC (Metropolis-Hastings) for parameter estimation
+        // =====================================================
+        
+        let concentrationData = [];
+        let bayesianResults = null;
+        
+        // Add a concentration data row
+        function addConcentrationRow(time = '', conc = '') {
+            const container = document.getElementById('concentrationDataRows');
+            const rowId = Date.now();
+            
+            const row = document.createElement('div');
+            row.className = 'conc-data-row';
+            row.id = `conc-row-${rowId}`;
+            row.innerHTML = `
+                <input type="number" placeholder="0" step="0.1" value="${time}" class="conc-time">
+                <input type="number" placeholder="0" step="1" value="${conc}" class="conc-value">
+                <button onclick="removeConcentrationRow(${rowId})">×</button>
+            `;
+            container.appendChild(row);
+        }
+        
+        function removeConcentrationRow(rowId) {
+            const row = document.getElementById(`conc-row-${rowId}`);
+            if (row) row.remove();
+        }
+        
+        function clearBayesianData() {
+            document.getElementById('concentrationDataRows').innerHTML = '';
+            document.getElementById('bayesianResults').style.display = 'none';
+            concentrationData = [];
+            bayesianResults = null;
+        }
+        
+        // Collect concentration data from UI
+        function collectConcentrationData() {
+            const rows = document.querySelectorAll('.conc-data-row');
+            const data = [];
+            rows.forEach(row => {
+                const time = parseFloat(row.querySelector('.conc-time').value);
+                const conc = parseFloat(row.querySelector('.conc-value').value);
+                if (!isNaN(time) && !isNaN(conc) && conc > 0) {
+                    data.push({ time, conc });
+                }
+            });
+            return data.sort((a, b) => a.time - b.time);
+        }
+        
+        // One-compartment oral PK model
+        function pkModel(params, dose, times) {
+            const { CL, Vd, ka, F } = params;
+            const ke = CL / Vd;
+            const dose_ug = dose * 1000 * F; // mg to microg with bioavailability
+            
+            const concentrations = [];
+            for (const t of times) {
+                if (t <= 0) {
+                    concentrations.push(0);
+                } else {
+                    let C;
+                    if (Math.abs(ka - ke) < 0.0001) {
+                        C = (dose_ug * ka * t * Math.exp(-ka * t)) / Vd;
+                    } else {
+                        C = (dose_ug * ka / (Vd * (ka - ke))) * (Math.exp(-ke * t) - Math.exp(-ka * t));
+                    }
+                    concentrations.push(Math.max(0, C * 1000)); // microg/mL to pg/mL
+                }
+            }
+            return concentrations;
+        }
+        
+        // Log-likelihood for concentration data
+        function logLikelihood(params, dose, data, sigma) {
+            const times = data.map(d => d.time);
+            const observed = data.map(d => d.conc);
+            const predicted = pkModel(params, dose, times);
+            
+            let ll = 0;
+            for (let i = 0; i < data.length; i++) {
+                const pred = Math.max(0.1, predicted[i]);
+                const obs = observed[i];
+                ll += -0.5 * Math.pow((Math.log(obs) - Math.log(pred)) / sigma, 2) - Math.log(sigma) - Math.log(obs);
+            }
+            return ll;
+        }
+        
+        // Log-prior for parameters (log-normal priors)
+        function logPrior(params, priors) {
+            let lp = 0;
+            const paramNames = ['CL', 'Vd', 'ka', 'F'];
+            
+            for (const name of paramNames) {
+                const value = params[name];
+                const prior = priors[name];
+                
+                if (value <= 0) return -Infinity;
+                
+                const logValue = Math.log(value);
+                const logMean = Math.log(prior.mean);
+                const cv = prior.cv;
+                
+                lp += -0.5 * Math.pow((logValue - logMean) / cv, 2) - Math.log(cv);
+            }
+            return lp;
+        }
+        
+        // Metropolis-Hastings MCMC
+        function runMCMC(data, priors, dose, nIter, sigma) {
+            let current = {
+                CL: priors.CL.mean,
+                Vd: priors.Vd.mean,
+                ka: priors.ka.mean,
+                F: priors.F.mean
+            };
+            
+            let currentLL = logLikelihood(current, dose, data, sigma);
+            let currentLP = logPrior(current, priors);
+            let currentPosterior = currentLL + currentLP;
+            
+            const samples = { CL: [], Vd: [], ka: [], F: [] };
+            const proposalSD = { CL: 5, Vd: 10, ka: 0.01, F: 0.01 };
+            let accepted = 0;
+            
+            for (let i = 0; i < nIter; i++) {
+                const paramNames = ['CL', 'Vd', 'ka', 'F'];
+                
+                for (const name of paramNames) {
+                    const proposed = { ...current };
+                    proposed[name] = current[name] * Math.exp(proposalSD[name] / current[name] * MathUtils.randn());
+                    
+                    const proposedLL = logLikelihood(proposed, dose, data, sigma);
+                    const proposedLP = logPrior(proposed, priors);
+                    const proposedPosterior = proposedLL + proposedLP;
+                    
+                    const logAlpha = proposedPosterior - currentPosterior;
+                    
+                    if (Math.log(Math.random()) < logAlpha) {
+                        current = proposed;
+                        currentLL = proposedLL;
+                        currentLP = proposedLP;
+                        currentPosterior = proposedPosterior;
+                        accepted++;
+                    }
+                }
+                
+                if (i >= nIter * 0.2) {
+                    samples.CL.push(current.CL);
+                    samples.Vd.push(current.Vd);
+                    samples.ka.push(current.ka);
+                    samples.F.push(current.F);
+                }
+            }
+            
+            return { samples, acceptanceRate: accepted / (nIter * 4) };
+        }
+        
+        // Calculate posterior statistics
+        function calcPosteriorStats(samples) {
+            const stats = {};
+            for (const [name, values] of Object.entries(samples)) {
+                const sorted = values.slice().sort((a, b) => a - b);
+                const n = sorted.length;
+                
+                stats[name] = {
+                    mean: values.reduce((a, b) => a + b, 0) / n,
+                    median: sorted[Math.floor(n / 2)],
+                    ci2_5: sorted[Math.floor(n * 0.025)],
+                    ci97_5: sorted[Math.floor(n * 0.975)]
+                };
+            }
+            return stats;
+        }
+        
+        // Main Bayesian estimation function
+        async function runBayesianEstimation() {
+            const data = collectConcentrationData();
+            
+            if (data.length < 2) {
+                alert('Please enter at least 2 concentration measurements');
+                return;
+            }
+            
+            const btn = document.getElementById('bayesianRunBtn');
+            btn.textContent = 'RUNNING...';
+            btn.disabled = true;
+            
+            await new Promise(r => setTimeout(r, 50));
+            
+            const dose = parseFloat(document.getElementById('bayesianDose').value);
+            const nIter = parseInt(document.getElementById('mcmcIterations').value);
+            const sigma = parseFloat(document.getElementById('bayesianSigma').value);
+            
+            const priors = {
+                CL: { mean: parseFloat(document.getElementById('priorCL').value), cv: 0.3 },
+                Vd: { mean: parseFloat(document.getElementById('priorVd').value), cv: 0.3 },
+                ka: { mean: parseFloat(document.getElementById('priorKa').value), cv: 0.5 },
+                F: { mean: parseFloat(document.getElementById('priorF').value), cv: 0.3 }
+            };
+            
+            const mcmcResult = runMCMC(data, priors, dose, nIter, sigma);
+            bayesianResults = calcPosteriorStats(mcmcResult.samples);
+            
+            const paramUnits = { CL: 'L/h', Vd: 'L', ka: '1/h', F: '' };
+            
+            for (const [name, stats] of Object.entries(bayesianResults)) {
+                const unit = paramUnits[name];
+                const precision = (name === 'ka' || name === 'F') ? 4 : 1;
+                document.getElementById(`posterior${name}`).textContent = 
+                    stats.median.toFixed(precision) + ' ' + unit;
+                document.getElementById(`posterior${name}CI`).textContent = 
+                    '[' + stats.ci2_5.toFixed(precision) + ', ' + stats.ci97_5.toFixed(precision) + ']';
+            }
+            
+            document.getElementById('mcmcDiagnostics').innerHTML = 
+                'Acceptance: ' + (mcmcResult.acceptanceRate * 100).toFixed(1) + '% | ' +
+                'Samples: ' + mcmcResult.samples.CL.length + ' | ' +
+                'Data points: ' + data.length;
+            
+            document.getElementById('bayesianResults').style.display = 'block';
+            btn.textContent = 'RUN MCMC';
+            btn.disabled = false;
+        }
+        
+        // Apply estimated parameters to simulator
+        function applyBayesianParams() {
+            if (!bayesianResults) {
+                alert('Run Bayesian estimation first');
+                return;
+            }
+            
+            document.getElementById('clInput').value = bayesianResults.CL.median.toFixed(1);
+            document.getElementById('vdInput').value = bayesianResults.Vd.median.toFixed(1);
+            document.getElementById('kaInput').value = bayesianResults.ka.median.toFixed(4);
+            document.getElementById('fInput').value = bayesianResults.F.median.toFixed(3);
+            
+            if (typeof updateProgestogenInteraction === 'function') {
+                updateProgestogenInteraction();
+            }
+            
+            alert('Parameters applied! Click RUN SIMULATION to use the new values.');
+        }
+        
+        // Initialize with some sample data rows
+        addConcentrationRow(4, 150);
+        addConcentrationRow(8, 100);
+        addConcentrationRow(12, 60);
+
+
     </script>
 </body>
 </html>
