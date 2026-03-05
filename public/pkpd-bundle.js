@@ -21,13 +21,10 @@ var PKPD = (() => {
   // src/lib/index.ts
   var index_exports = {};
   __export(index_exports, {
-    ANDROGENS: () => ANDROGENS,
-    CYP3A4_FACTORS: () => CYP3A4_FACTORS,
+    BayesianEstimator: () => BayesianEstimator,
     DRUG_DB: () => DRUG_DB,
-    ESTROGENS: () => ESTROGENS,
     OneCompartmentModel: () => OneCompartmentModel,
-    PKPDSimulator: () => PKPDSimulator,
-    PROGESTOGENS: () => PROGESTOGENS
+    PKPDSimulator: () => PKPDSimulator
   });
 
   // src/lib/pkpd/solvers/EulerMaruyama.ts
@@ -387,8 +384,8 @@ var PKPD = (() => {
     }
   };
 
-  // src/lib/drugs/estrogens.ts
-  var ESTROGENS = {
+  // src/lib/drugs/database.ts
+  var DRUG_DB = {
     E2_oral: {
       name: "Estradiol Oral",
       therapeutic: [50, 200],
@@ -403,7 +400,7 @@ var PKPD = (() => {
       intervalUnit: "h",
       defaultDose: 2,
       defaultInterval: 12,
-      ref: "PMID: 1548642 | PMC7878477"
+      ref: "PMID: 1548642"
     },
     E2V_oral: {
       name: "Estradiol Valerate Oral",
@@ -419,7 +416,7 @@ var PKPD = (() => {
       intervalUnit: "h",
       defaultDose: 2,
       defaultInterval: 12,
-      ref: "PMID: 1548642 | PMID 9793623"
+      ref: "PMID: 1548642"
     },
     E2_subl: {
       name: "Estradiol Sublingual",
@@ -453,18 +450,18 @@ var PKPD = (() => {
     },
     E2_td_gel: {
       name: "Estradiol Transdermal Gel",
-      therapeutic: [10, 50],
+      therapeutic: [50, 200],
       unit: "pg/mL",
-      CL: 10,
-      Vd: 120,
-      ka: 0.05,
-      F: 0.9,
-      halfLife: 30,
-      doseUnit: "\u03BCg",
+      CL: 12,
+      Vd: 180,
+      ka: 0.15,
+      F: 0.1,
+      halfLife: 24,
+      doseUnit: "mg",
       intervalUnit: "h",
-      defaultDose: 0.72,
+      defaultDose: 1.5,
       defaultInterval: 24,
-      ref: "Clinical pharmacokinetics"
+      ref: "PMID: 17143811"
     },
     E2V: {
       name: "Estradiol Valerate IM",
@@ -479,140 +476,216 @@ var PKPD = (() => {
       intervalUnit: "h",
       defaultDose: 5,
       defaultInterval: 168,
-      ref: "TfS Meta-analysis | PMID: 7169965"
+      ref: "PMID: 7169965"
     },
     E2C: {
       name: "Estradiol Cypionate IM",
       therapeutic: [100, 400],
       unit: "pg/mL",
-      CL: 120,
-      Vd: 2800,
-      ka: 6e-3,
+      CL: 80,
+      Vd: 3e3,
+      ka: 8e-3,
       F: 0.9,
       halfLife: 192,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 5,
-      defaultInterval: 168,
-      ref: "TfS Meta-analysis | PMID: 7389356"
+      defaultInterval: 336,
+      ref: "PMID: 28838353"
     },
-    E2E: {
+    EEn: {
       name: "Estradiol Enanthate IM",
       therapeutic: [100, 400],
       unit: "pg/mL",
-      CL: 5,
-      Vd: 2500,
-      ka: 4e-3,
-      F: 0.92,
-      halfLife: 240,
+      CL: 90,
+      Vd: 2700,
+      ka: 0.01,
+      F: 0.88,
+      halfLife: 168,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 5,
       defaultInterval: 168,
-      ref: "TfS Meta-analysis"
-    }
-  };
-
-  // src/lib/drugs/progestogens.ts
-  var PROGESTOGENS = {
+      ref: "PMID: 28838353"
+    },
     MPA_oral: {
       name: "Medroxyprogesterone Acetate Oral",
-      therapeutic: [0.5, 3],
+      therapeutic: [1, 10],
       unit: "ng/mL",
-      CL: 20,
-      Vd: 35,
-      ka: 1.2,
-      F: 0.95,
-      halfLife: 30,
+      CL: 50,
+      Vd: 200,
+      ka: 1.5,
+      F: 0.9,
+      halfLife: 24,
       doseUnit: "mg",
       intervalUnit: "h",
-      defaultDose: 10,
+      defaultDose: 5,
       defaultInterval: 24,
-      cyp3a4: true,
-      isProgestogen: true,
-      hillEnzyme: {
-        enzyme: "CYP3A4",
-        Ki: 2.5,
-        IC50: 5,
-        hillCoef: 1,
-        mechanism: "substrate_weak_inhibitor"
-      },
-      ref: "DrugBank DB00603"
+      ref: "PMID: 6336623"
     },
     CPA_oral: {
       name: "Cyproterone Acetate Oral",
-      therapeutic: [20, 300],
+      therapeutic: [50, 300],
       unit: "ng/mL",
-      CL: 5,
-      Vd: 3,
-      ka: 0.8,
-      F: 0.88,
-      halfLife: 60,
+      CL: 3.5,
+      Vd: 350,
+      ka: 0.5,
+      F: 0.85,
+      halfLife: 48,
       doseUnit: "mg",
       intervalUnit: "h",
-      defaultDose: 25,
+      defaultDose: 12.5,
       defaultInterval: 24,
-      cyp3a4: true,
-      isProgestogen: true,
-      hillEnzyme: {
-        enzyme: "CYP3A4",
-        Ki: 0.8,
-        IC50: 1.5,
-        hillCoef: 1.2,
-        mechanism: "substrate_moderate_inhibitor"
-      },
-      ref: "PMID: 8131397 | DrugBank DB04839"
-    }
-  };
-  var ANDROGENS = {
+      ref: "PMID: 3127499"
+    },
     TEST_En: {
       name: "Testosterone Enanthate IM",
       therapeutic: [300, 1e3],
       unit: "ng/dL",
-      CL: 80,
-      Vd: 1900,
+      CL: 50,
+      Vd: 1500,
       ka: 0.015,
-      F: 0.65,
-      halfLife: 96,
-      doseUnit: "mg",
-      intervalUnit: "h",
-      defaultDose: 100,
-      defaultInterval: 168,
-      ref: "PMC4721027 | PMC9293229"
-    },
-    TEST_Cy: {
-      name: "Testosterone Cypionate IM",
-      therapeutic: [300, 1e3],
-      unit: "ng/dL",
-      CL: 6,
-      Vd: 900,
-      ka: 0.012,
-      F: 0.65,
+      F: 0.95,
       halfLife: 120,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 100,
       defaultInterval: 168,
-      ref: "Clinical data"
+      ref: "PMID: 15476439"
+    },
+    TEST_Cy: {
+      name: "Testosterone Cypionate IM",
+      therapeutic: [300, 1e3],
+      unit: "ng/dL",
+      CL: 45,
+      Vd: 1600,
+      ka: 0.013,
+      F: 0.95,
+      halfLife: 144,
+      doseUnit: "mg",
+      intervalUnit: "h",
+      defaultDose: 100,
+      defaultInterval: 168,
+      ref: "PMID: 15476439"
     }
   };
 
-  // src/lib/drugs/interactions.ts
-  var CYP3A4_FACTORS = {
-    none: { name: "No Interaction", factor: 1, desc: "Normal metabolism" },
-    inhibitor_mild: { name: "Mild Inhibitor", factor: 0.85, desc: "Grapefruit, Cimetidine" },
-    inhibitor_moderate: { name: "Moderate Inhibitor", factor: 0.7, desc: "Fluconazole, Erythromycin" },
-    inhibitor_strong: { name: "Strong Inhibitor", factor: 0.5, desc: "Ketoconazole, Ritonavir" },
-    inducer_mild: { name: "Mild Inducer", factor: 1.3, desc: "Modafinil" },
-    inducer_moderate: { name: "Moderate Inducer", factor: 1.6, desc: "Efavirenz, Nevirapine" },
-    inducer_strong: { name: "Strong Inducer", factor: 2.5, desc: "Rifampin, Carbamazepine" }
-  };
-
-  // src/lib/drugs/index.ts
-  var DRUG_DB = {
-    ...ESTROGENS,
-    ...PROGESTOGENS,
-    ...ANDROGENS
+  // src/lib/bayesian/mcmc.ts
+  var BayesianEstimator = class {
+    constructor(config) {
+      this.config = config;
+    }
+    randn() {
+      const u1 = Math.random();
+      const u2 = Math.random();
+      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    }
+    pkModel(CL, Vd, ka) {
+      const { dose, interval, nDoses, duration, dt, F } = this.config;
+      const n = Math.ceil(duration / dt);
+      const C = [];
+      let A_depot = 0;
+      let A_central = 0;
+      const ke = CL / Vd;
+      const doseTimes = [];
+      for (let d = 0; d < nDoses; d++) {
+        doseTimes.push(d * interval);
+      }
+      let lastDoseIdx = -1;
+      for (let i = 0; i < n; i++) {
+        const currentTime = i * dt;
+        const doseIdx = doseTimes.findIndex((t) => Math.abs(currentTime - t) < dt / 2);
+        if (doseIdx !== -1 && doseIdx > lastDoseIdx) {
+          A_depot += dose * 1e3 * F;
+          lastDoseIdx = doseIdx;
+        }
+        const dA_depot = -ka * A_depot * dt;
+        const dA_central = (ka * A_depot - ke * A_central) * dt;
+        A_depot += dA_depot;
+        A_central += dA_central;
+        C.push(A_central / Vd);
+      }
+      return C;
+    }
+    logLikelihood(CL, Vd, ka) {
+      const predicted = this.pkModel(CL, Vd, ka);
+      const { observedData, dt } = this.config;
+      let logLik = 0;
+      const sigma = 10;
+      for (const obs of observedData) {
+        const idx = Math.round(obs.time / dt);
+        if (idx >= 0 && idx < predicted.length) {
+          const pred = predicted[idx];
+          const residual = obs.concentration - pred;
+          logLik -= 0.5 * (residual * residual) / (sigma * sigma);
+        }
+      }
+      return logLik;
+    }
+    runMCMC(nSamples = 5e3, burnIn = 1e3) {
+      const { priorCL, priorVd, priorKa } = this.config;
+      let CL = priorCL.mean;
+      let Vd = priorVd.mean;
+      let ka = priorKa.mean;
+      let logLik = this.logLikelihood(CL, Vd, ka);
+      const samples = {
+        CL: [],
+        Vd: [],
+        ka: [],
+        logLikelihood: []
+      };
+      let accepted = 0;
+      const proposalStd = { CL: priorCL.std * 0.1, Vd: priorVd.std * 0.1, ka: priorKa.std * 0.1 };
+      for (let i = 0; i < nSamples + burnIn; i++) {
+        const CL_new = CL + this.randn() * proposalStd.CL;
+        const Vd_new = Vd + this.randn() * proposalStd.Vd;
+        const ka_new = ka + this.randn() * proposalStd.ka;
+        if (CL_new > 0 && Vd_new > 0 && ka_new > 0) {
+          const logLik_new = this.logLikelihood(CL_new, Vd_new, ka_new);
+          const logPrior = -0.5 * (Math.pow((CL_new - priorCL.mean) / priorCL.std, 2) + Math.pow((Vd_new - priorVd.mean) / priorVd.std, 2) + Math.pow((ka_new - priorKa.mean) / priorKa.std, 2));
+          const logPrior_old = -0.5 * (Math.pow((CL - priorCL.mean) / priorCL.std, 2) + Math.pow((Vd - priorVd.mean) / priorVd.std, 2) + Math.pow((ka - priorKa.mean) / priorKa.std, 2));
+          const logAlpha = logLik_new + logPrior - (logLik + logPrior_old);
+          if (Math.log(Math.random()) < logAlpha) {
+            CL = CL_new;
+            Vd = Vd_new;
+            ka = ka_new;
+            logLik = logLik_new;
+            accepted++;
+          }
+        }
+        if (i >= burnIn) {
+          samples.CL.push(CL);
+          samples.Vd.push(Vd);
+          samples.ka.push(ka);
+          samples.logLikelihood.push(logLik);
+        }
+      }
+      const posteriorStats = this.calculatePosteriorStats(samples);
+      return {
+        samples,
+        acceptance: accepted / (nSamples + burnIn),
+        posteriorStats
+      };
+    }
+    calculatePosteriorStats(samples) {
+      const calcStats = (arr) => {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+        const variance = arr.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / arr.length;
+        const std = Math.sqrt(variance);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        const ci95 = [
+          sorted[Math.floor(sorted.length * 0.025)],
+          sorted[Math.floor(sorted.length * 0.975)]
+        ];
+        return { mean, std, median, ci95 };
+      };
+      return {
+        CL: calcStats(samples.CL),
+        Vd: calcStats(samples.Vd),
+        ka: calcStats(samples.ka)
+      };
+    }
   };
   return __toCommonJS(index_exports);
 })();
