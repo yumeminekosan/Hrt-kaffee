@@ -2007,39 +2007,30 @@
                     const poissonJump = this.sdeModel === 'symplectic' ? 
                         this.generatePoissonJump(jumpLambda, jumpMagnitude) : 0;
 
-                    // Stochastic clearance variation
-                    if (this.sigma > 0) {
-                        if (this.sdeModel === 'jump') {
-                            const jumpProb = 0.01;
-                            const jumpSize = MathUtils.randn() * this.sigma * 3;
-                            const jump = Math.random() < jumpProb ? jumpSize : 0;
-                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h + 
-                                              this.sigma * dW + jump);
-                        } else if (this.sdeModel === 'garch') {
-                            const innovation = dW * dW / dt_h;
-                            const omega = this.sigma * this.sigma * 0.05;
-                            this.garchVar = omega + this.garchAlpha * innovation * this.sigma * this.sigma + this.garchBeta * this.garchVar;
-                            this.garchVar = Math.max(0.0001, Math.min(this.garchVar, this.sigma * this.sigma * 4));
-                            const garchSigma = Math.sqrt(this.garchVar);
-                            CL_var *= Math.exp(-0.5 * garchSigma * garchSigma * dt_h + garchSigma * dW);
-                        } else if (this.sdeModel === 'symplectic') {
-                            // Symplectic integration with Poisson jumps
-                            CL_var *= Math.exp(this.sigma * dW - 0.5 * this.sigma * this.sigma * dt_h + poissonJump);
-                        } else if (this.sdeModel === 'stratonovich') {
-                            // Stratonovich: chain rule satisfied naturally
-                            // No Itô correction needed
-                            CL_var *= Math.exp(this.sigma * dW);
-                        } else {
-                            CL_var *= Math.exp(-0.5 * this.sigma * this.sigma * dt_h + this.sigma * dW);
-                        }
-                        
-                        CL_var = Math.max(CL_var * 0.5, Math.min(CL_var * 2, this.CL * 2));
-                    }
+                    // =====================================================
+                    // SDE Model: Multiplicative noise on concentration
+                    // 
+                    // Standard PK SDE formulation:
+                    //   dC = (ka*A_depot/Vd - ke*C) * dt + sigma*C*dW
+                    // 
+                    // The noise is applied to concentration, not CL!
+                    // This prevents CL from random walk drift.
+                    // 
+                    // Store dW for use in integration methods
+                    // =====================================================
+                    const stochastic_dW = this.sigma > 0 ? dW : 0;
                     
                     // Apply integration method based on sdeModel
                     let state;
                     if (this.sdeModel === 'stratonovich' && this.sigma > 0) {
-                        // Stratonovich integration methods
+                        // =====================================================
+                        // Stratonovich integration for dC = drift*dt + sigma*C*dW
+                        // 
+                        // Stratonovich: no Itô correction (ordinary chain rule)
+                        // Concentration: C *= exp(sigma*dW)
+                        // =====================================================
+                        
+                        // First do deterministic integration (using Heun or other method)
                         if (this.stratonovichMethod === 'milstein') {
                             state = this.milsteinStratonovichStep(A_depot, A_central, CL_var, dt_h, dW);
                         } else if (this.stratonovichMethod === 'runge-kutta') {
@@ -2052,6 +2043,9 @@
                         }
                         A_depot = state.A_depot;
                         A_central = state.A_central;
+                        
+                        // Apply Stratonovich stochastic term (no Itô correction)
+                        A_central *= Math.exp(this.sigma * stochastic_dW);
                     } else if (this.sdeModel === 'symplectic' && this.sigma > 0) {
                         // Symplectic integration methods
                         if (this.symplecticMethod === 'yoshida4') {
@@ -2067,7 +2061,12 @@
                         A_depot = state.A_depot;
                         A_central = state.A_central;
                     } else {
-                        // Standard Euler-Maruyama for non-symplectic modes
+                        // =====================================================
+                        // Euler-Maruyama for SDE: dC = drift*dt + sigma*C*dW
+                        // 
+                        // Itô interpretation: -0.5*sigma²*dt correction
+                        // This is the standard PK SDE model
+                        // =====================================================
                         const ke_t = CL_var / this.Vd;
 
                         // Absorption from depot
@@ -2075,9 +2074,16 @@
                         A_depot -= dA_dep;
                         A_central += dA_dep;
 
-                        // Elimination
+                        // Elimination (deterministic)
                         const dA_elim = ke_t * A_central * dt_h;
                         A_central -= dA_elim;
+
+                        // Stochastic term (multiplicative noise on concentration)
+                        // dC = sigma*C*dW → A_central *= exp(sigma*dW - 0.5*sigma²*dt) for Itô
+                        if (this.sigma > 0) {
+                            const ito_correction = -0.5 * this.sigma * this.sigma * dt_h;
+                            A_central *= Math.exp(this.sigma * stochastic_dW + ito_correction);
+                        }
 
                         // Ensure non-negative
                         A_depot = Math.max(0, A_depot);
