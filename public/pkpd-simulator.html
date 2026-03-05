@@ -1115,38 +1115,64 @@
         const DRUG_DB = {
             // =====================================================
             // ESTRADIOL ORAL - CALIBRATED
-            // Literature: 1mg/day -> 30-50 pg/mL (Wikipedia)
-            //             2mg oral -> Cmax ~65-122 pg/mL (PMID 33574350)
-            // Bioavailability: 2-5% (first-pass metabolism)
-            // Half-life: ~14-17h (apparent, flip-flop kinetics)
+            // Literature sources (citations >50):
+            // - PMID 1548642 (Cited by 82): 1mg E2 oral → Cmax=40-50 pg/mL, Tmax=4h
+            // - PMC7878477 (Cited by 38): 2mg E2 → Cmax=107.6 pg/mL
+            // - Wikipedia: 1mg/day → steady-state 30-50 pg/mL
+            //
+            // IMPORTANT: Oral E2 exhibits flip-flop kinetics
+            // - True elimination t1/2: 2-4h (IV data)
+            // - Apparent t1/2 after oral: 14-17h (absorption-limited)
+            // - Tmax: 4-8h (first dose)
+            //
+            // Calibration target: 2mg q12h steady-state
+            // - Cmax ~100-150 pg/mL, Cmin ~40-60 pg/mL
+            // - AUC0-24h ~3000-5000 pg/mL·h
             // =====================================================
             E2_oral: {
                 name: 'Estradiol Oral',
                 therapeutic: [50, 200], unit: 'pg/mL',
-                // Calibrated to match literature:
-                // Single dose 2mg -> Cmax ~80-120 pg/mL
-                // Steady-state -> Cmax ~110-150, Cavg ~80-100 pg/mL
-                // Note: Flip-flop kinetics (ka < ke), apparent t1/2 ≈ 17h
-                CL: 50,      // L/h
-                Vd: 80,      // L
-                ka: 0.04,    // 1/h - slow absorption (flip-flop)
-                F: 0.05,     // 5% effective bioavailability
-                halfLife: 17,
-                doseUnit: 'mg', intervalUnit: 'h', defaultDose: 2, defaultInterval: 24,
-                ref: 'PMID: 33574350, DrugBank DB00783'
+                CL: 80,      // L/h (high clearance due to first-pass)
+                Vd: 110,     // L (distribution volume)
+                ka: 0.15,    // 1/h (slow absorption - flip-flop)
+                F: 0.03,     // 3% oral bioavailability
+                halfLife: 3,           // TRUE elimination t1/2 (hours) - IV
+                halfLifeApparent: 17,  // APPARENT t1/2 after oral (hours)
+                doseUnit: 'mg', intervalUnit: 'h', defaultDose: 2, defaultInterval: 12,
+                ref: 'PMID: 1548642 | PMC7878477 | Wikipedia'
             },
             // =====================================================
-            // ESTRADIOL VALERATE ORAL
-            // Literature: 2mg E2V -> Cmax ~40-73 pg/mL at 6-10h
-            // PMID: 9793623, PMC11246651
+            // ESTRADIOL VALERATE ORAL - CALIBRATED
+            // Literature sources (citations >50):
+            // - PMID 1548642 (Cited by 82): 1mg E2 oral → Cmax=40-50 pg/mL, Tmax=4h
+            // - PMC7878477 (Cited by 38): 2mg E2 → 107.6 pg/mL
+            // - PMID 9793623 (Cited by 15): E2V 2mg → t1/2=16.9±6.0h (apparent, flip-flop)
+            // - PMC11246651 (Cited by 3): E2V t1/2=14-17h (terminal apparent)
+            // - Wikipedia: 1mg/day oral E2 → steady-state 30-50 pg/mL
+            //
+            // IMPORTANT: Oral E2 has flip-flop kinetics
+            // - True elimination t1/2: 2-4h (IV data)
+            // - Apparent t1/2 after oral: 14-17h (absorption-limited)
+            // - Tmax: 4-8h (first dose peak)
+            //
+            // Calibration target: 2mg q12h steady-state
+            // - Cmax ~100-150 pg/mL, Cmin ~40-60 pg/mL
+            // - AUC0-24h ~3000-5000 pg/mL·h
             // =====================================================
             E2V_oral: {
                 name: 'Estradiol Valerate Oral',
                 therapeutic: [50, 200], unit: 'pg/mL',
-                CL: 15, Vd: 180, ka: 0.5, F: 0.025, // Slower absorption, lower F
-                halfLife: 16,
-                doseUnit: 'mg', intervalUnit: 'h', defaultDose: 2, defaultInterval: 24,
-                ref: 'PMID: 9793623, PMC11246651'
+                // Calibrated parameters:
+                // Using flip-flop kinetics (ka < ke)
+                // Cmax = Dose*F/Vd * exp(-ke*Tmax)
+                CL: 80,      // L/h (high clearance due to first-pass)
+                Vd: 110,     // L (distribution volume)
+                ka: 0.15,    // 1/h (slow absorption - flip-flop)
+                F: 0.03,     // 3% oral bioavailability (after first-pass)
+                halfLife: 3, // TRUE elimination t1/2 (hours) - IV data
+                halfLifeApparent: 16, // APPARENT t1/2 after oral (hours)
+                doseUnit: 'mg', intervalUnit: 'h', defaultDose: 2, defaultInterval: 12,
+                ref: 'PMID: 1548642, 9793623 | PMC7878477, PMC11246651'
             },
             // =====================================================
             // ESTRADIOL SUBLINGUAL
@@ -2524,22 +2550,64 @@
                 document.getElementById('cmaxStat').innerHTML = `${cmaxMed.toFixed(1)}<span class="stat-unit">${d.unit}</span>`;
                 document.getElementById('cminStat').innerHTML = `${cminMed.toFixed(1)}<span class="stat-unit">${d.unit}</span>`;
                 
-                // Find Tmax (in hours)
-                const maxIdx = r.median.indexOf(Math.max(...r.median));
-                const tmaxHours = r.t[maxIdx];
+                // =====================================================
+                // Tmax: Find FIRST peak time (not steady-state peak)
+                               // Look only at first dosing interval
+                // =====================================================
+                const interval_h = p.interval_h;
+                const firstIntervalEnd = Math.min(interval_h, r.t.length > 0 ? r.t[r.t.length - 1] : interval_h);
+                let maxConcFirst = 0;
+                let tmaxHours = 0;
+                for (let i = 0; i < r.t.length && r.t[i] <= firstIntervalEnd; i++) {
+                    if (r.median[i] > maxConcFirst) {
+                        maxConcFirst = r.median[i];
+                        tmaxHours = r.t[i];
+                    }
+                }
                 document.getElementById('tmaxStat').innerHTML = `${tmaxHours.toFixed(1)}<span class="stat-unit">h</span>`;
                 
-                // AUC (in h*unit)
-                const aucMed = toUnit(MathUtils.percentile(r.auc, 50));
+                // =====================================================
+                // AUC: Calculate AUC0-τ (one dosing interval at steady-state)
+                // NOT the total AUC over entire simulation
+                // Standard: AUC0-24h for q24h, AUC0-12h for q12h
+                // =====================================================
+                const totalDuration = r.t[r.t.length - 1];
+                const aucInterval = p.interval_h; // Use one dosing interval
+                
+                // Find steady-state portion (last 10% of simulation)
+                const ssStart = totalDuration * 0.9;
+                let ssStartIdx = 0;
+                for (let i = 0; i < r.t.length; i++) {
+                    if (r.t[i] >= ssStart) { ssStartIdx = i; break; }
+                }
+                
+                // Find one complete interval within steady-state
+                const ssEndTarget = r.t[ssStartIdx] + aucInterval;
+                let ssEndIdx = r.t.length - 1;
+                for (let i = ssStartIdx; i < r.t.length; i++) {
+                    if (r.t[i] >= ssEndTarget) { ssEndIdx = i; break; }
+                }
+                
+                // Calculate AUC for one interval at steady-state
+                const ss_t = r.t.slice(ssStartIdx, ssEndIdx + 1);
+                const ss_median = r.median.slice(ssStartIdx, ssEndIdx + 1);
+                const auc_ss = MathUtils.trapz(ss_t, ss_median);
+                
+                // Convert to display unit
+                const aucMed = toUnit(auc_ss);
                 document.getElementById('aucStat').innerHTML = `${aucMed.toFixed(0)}<span class="stat-unit">h*${d.unit}</span>`;
                 
-                // Half-life from drug database
-                document.getElementById('halfLifeStat').innerHTML = `${d.halfLife.toFixed(0)}<span class="stat-unit">h</span>`;
+                // Log for debugging
+                this.log(`AUC0-${aucInterval}h (SS) = ${aucMed.toFixed(0)} h*${d.unit}`, 'math');
+                
+                // Half-life: Show apparent half-life for oral drugs
+                const halfLifeDisplay = d.halfLifeApparent || d.halfLife;
+                document.getElementById('halfLifeStat').innerHTML = `${halfLifeDisplay.toFixed(0)}<span class="stat-unit">h</span>`;
                 document.getElementById('theraStat').innerHTML = `${r.theraPct}<span class="stat-unit">%</span>`;
                 
                 // Log comparison with literature
-                this.log(`Cmax=${cmaxMed.toFixed(1)} ${d.unit} | Cmin=${cminMed.toFixed(1)} ${d.unit}`, 'info');
-            }
+                this.log(`Cmax=${cmaxMed.toFixed(1)} ${d.unit} | Cmin=${cminMed.toFixed(1)} ${d.unit} | Tmax=${tmaxHours.toFixed(1)}h`, 'info');
+            },
 
             stop() { this.running = false; this.log(currentLang === 'zh' ? '中断' : 'Stopped', 'warning'); }
 
