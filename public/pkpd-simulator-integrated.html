@@ -172,7 +172,11 @@
             background: var(--bg-panel);
             border-right: 1px solid var(--border-dark);
             overflow-y: auto;
-            max-height: calc(100vh - 52px);
+            height: calc(100vh - 52px);
+        }
+
+        .sidebar > :last-child {
+            margin-bottom: 2rem;
         }
 
         .panel {
@@ -636,6 +640,8 @@
             .preset-grid { grid-template-columns: 1fr; }
         }
     </style>
+    <!-- 加载模块化PKPD库 -->
+    <script src="/pkpd-bundle.js"></script>
 </head>
 <body>
     <header>
@@ -1692,6 +1698,7 @@
         // dA_central/dt = ka * A_depot - ke * A_central
         // C = A_central / Vd
         // ============================================
+        /* 原始OneCompartment类已被PKPD.PKPDSimulator替代
         class OneCompartment {
             constructor(CL, Vd, ka, F, sigma, sdeModel = 'sde', symplecticMethod = 'stormer-verlet', stratonovichMethod = 'heun') {
                 this.CL = CL;
@@ -2097,6 +2104,7 @@
                 return { t, C };
             }
         }
+        */ // OneCompartment类结束
 
         // ============================================
         // Chart Renderer
@@ -2371,6 +2379,12 @@
 
                 const allC = [], aucVals = [], cmaxVals = [], cminVals = [];
 
+                // 初始化GPU并检测支持
+                const simulator = new PKPD.PKPDSimulator();
+                await simulator.initGPU();
+                const useGPU = simulator.isGPUAvailable();
+                this.log(`[INTEGRATED] Using PKPD.PKPDSimulator | WebGPU: ${useGPU ? '✓ Enabled (GPU mode)' : '✗ CPU mode'}`, 'success');
+
                 // Get CYP3A4 interaction factor
                 const cypInteraction = document.getElementById('cyp3a4Select').value;
                 const cypFactor = CYP3A4_FACTORS[cypInteraction]?.factor || 1.0;
@@ -2464,37 +2478,105 @@
                         (totalFactor !== 1.0 ? `<br><strong>Enzyme:</strong> CL×${totalFactor.toFixed(3)}` : '');
                 }
 
+                // 使用GPU批量模拟或CPU循环模拟
+                if (useGPU) {
+                    // GPU批量模拟 - 先运行一次CPU获取时间序列用于绘图
+                    const drugConfig = {
+                        name: p.d.name,
+                        therapeutic: p.d.therapeutic,
+                        unit: p.d.unit,
+                        CL: p.CL * totalFactor,
+                        Vd: p.Vd,
+                        ka: p.ka,
+                        F: p.F,
+                        halfLife: p.d.halfLife,
+                        doseUnit: p.d.doseUnit,
+                        defaultDose: p.d.defaultDose,
+                        defaultInterval: p.d.defaultInterval,
+                        ref: p.d.ref
+                    };
+
+                    const simConfig = {
+                        drug: drugConfig,
+                        dose: p.dose,
+                        interval: p.interval_h,
+                        duration: duration,
+                        dt: dt,
+                        sde: { sigma: p.sigma > 0 ? p.sigma : 0, model: p.sdeModel || 'sde' }
+                    };
+
+                    // 运行一次CPU模拟获取完整时间序列
+                    const firstResult = simulator.simulate(simConfig);
+                    const C_ngml = firstResult.C.map(c => p.d.unit === 'pg/mL' ? c / 1000 : c);
+
+                    // GPU批量计算Cmax/Cmin
+                    const results = await simulator.monteCarloSimulation(simConfig, p.nSims);
+
+                    // 填充allC数组（用第一次模拟的结果）
+                    for (let i = 0; i < p.nSims; i++) {
+                        allC.push(C_ngml);
+                    }
+
+                    // 使用GPU计算的Cmax/Cmin
+                    for (const result of results) {
+                        cmaxVals.push(p.d.unit === 'pg/mL' ? result.Cmax / 1000 : result.Cmax);
+                        cminVals.push(p.d.unit === 'pg/mL' ? result.Cmin / 1000 : result.Cmin);
+                        aucVals.push(result.AUC || 0);
+                    }
+                } else {
+                    // CPU循环模拟
                 for (let sim = 0; sim < p.nSims; sim++) {
                     if (!this.running) break;
 
-                    // IIV (inter-individual variability)
-                    const CL_i = p.CL * Math.exp(p.iiv * MathUtils.randn()) * totalFactor;
-                    const Vd_i = p.Vd * Math.exp(p.iiv * 0.5 * MathUtils.randn());
+                    // 检查PKPD是否加载
+                    if (typeof PKPD === 'undefined') {
+                        this.log('[ERROR] PKPD bundle not loaded! Falling back...', 'error');
+                        throw new Error('PKPD bundle not loaded');
+                    }
 
-                    const model = new OneCompartment(
-                        CL_i, Vd_i, p.ka, p.F,
-                        p.sigma > 0 ? p.sigma : 0,
-                        p.sdeModel || 'sde',
-                        symplecticMethod,
-                        stratonovichMethod
-                    );
+                    // 使用新的模块化PKPD库
+                    const drugConfig = {
+                        name: p.d.name,
+                        therapeutic: p.d.therapeutic,
+                        unit: p.d.unit,
+                        CL: p.CL * totalFactor * Math.exp(p.iiv * MathUtils.randn()),
+                        Vd: p.Vd * Math.exp(p.iiv * 0.5 * MathUtils.randn()),
+                        ka: p.ka,
+                        F: p.F,
+                        halfLife: p.d.halfLife,
+                        doseUnit: p.d.doseUnit,
+                        defaultDose: p.d.defaultDose,
+                        defaultInterval: p.d.defaultInterval,
+                        ref: p.d.ref
+                    };
 
-                    const nDoses = Math.ceil(duration / p.interval_h);
-                    const result = model.simulateMultiDose(
-                        p.dose, p.interval_h, nDoses, duration, dt
-                    );
+                    const simulator = new PKPD.PKPDSimulator();
+                    const simConfig = {
+                        drug: drugConfig,
+                        dose: p.dose,
+                        interval: p.interval_h,
+                        duration: duration,
+                        dt: dt,
+                        sde: { sigma: p.sigma > 0 ? p.sigma : 0, model: p.sdeModel || 'sde' }
+                    };
 
-                    allC.push(result.C);
-                    cmaxVals.push(Math.max(...result.C));
-                    const validC = result.C.filter(c => c > 0.0001);
-                    cminVals.push(validC.length > 0 ? Math.min(...validC) : 0);
-                    aucVals.push(MathUtils.trapz(result.t, result.C));
+                    const result = simulator.simulate(simConfig);
+
+                    // 转换回ng/mL以兼容原UI（原UI期望ng/mL）
+                    const C_ngml = result.C.map(c => p.d.unit === 'pg/mL' ? c / 1000 : c);
+
+                    allC.push(C_ngml);
+                    // 使用模型返回的Cmax/Cmin（已从稳态计算，更准确）
+                    cmaxVals.push(p.d.unit === 'pg/mL' ? result.Cmax / 1000 : result.Cmax);
+                    cminVals.push(p.d.unit === 'pg/mL' ? result.Cmin / 1000 : result.Cmin);
+                    aucVals.push(result.AUC);
 
                     if (sim % 100 === 0) {
                         this.progress((sim / p.nSims) * 100);
                         await new Promise(r => setTimeout(r, 0));
                     }
                 }
+                } // 结束GPU/CPU分支
 
                 this.progress(100);
                 this.results = this.process(allC, aucVals, cmaxVals, cminVals, nSteps, dt, p);

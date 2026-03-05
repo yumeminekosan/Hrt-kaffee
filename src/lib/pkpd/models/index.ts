@@ -1,0 +1,1 @@
+export { OneCompartmentModel } from './OneCompartment';
