@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PK/PD Monte Carlo Simulator v3.1</title>
-    <meta name="version" content="2026-03-07-v7.1-fix-totalFactor-error">
+    <meta name="version" content="2026-03-07-v7.2-fix-progestogen-panel-bug">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,25 95,75 50,95 5,75 5,25' fill='%2316191e' stroke='%23f6c857' stroke-width='2'/><text x='50' y='60' font-size='30' fill='%23f6c857' text-anchor='middle' font-family='monospace'>PK</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -6032,24 +6032,30 @@
             const info = document.getElementById('therapeuticInfo');
             info.innerHTML = `<strong data-i18n="info.therapeutic">${i18n[currentLang]['info.therapeutic']}</strong> ${d.therapeutic[0]}-${d.therapeutic[1]} ${d.unit}<div class="lit-ref">${d.ref}</div>`;
 
-            // Show/hide progestogen panel
-            const progestogenPanel = document.getElementById('progestogenPanel');
+            // Show/hide progestogen interaction panel
+            // This panel is for adding progestogen to see effect on E2
+            // When main drug is progestogen, hide this panel (no self-interaction)
+            const progestogenInteractionPanel = document.getElementById('progestogenInteractionPanel');
+            if (progestogenInteractionPanel) {
+                if (d.isProgestogen) {
+                    // Hide interaction panel when main drug is progestogen
+                    progestogenInteractionPanel.style.display = 'none';
+                    // Reset progestogen selection
+                    const progestogenSelect = document.getElementById('progestogenSelect');
+                    if (progestogenSelect) progestogenSelect.value = 'none';
+                } else {
+                    // Show interaction panel for E2 or other non-progestogen drugs
+                    progestogenInteractionPanel.style.display = 'block';
+                }
+            }
+            
+            // Hill model for progestogen main drug
             if (d.isProgestogen && d.hillEnzyme) {
-                progestogenPanel.style.display = 'block';
-                
                 // Initialize Hill model
                 if (typeof sim !== 'undefined') {
                     sim.hillModel = new HillEnzymeModel(d);
                 }
-                
-                // Update Hill info
-                const hillRef = document.getElementById('hillRef');
-                hillRef.textContent = `${d.hillEnzyme.enzyme}: Ki=${d.hillEnzyme.Ki}μM, IC50=${d.hillEnzyme.IC50}μM, n=${d.hillEnzyme.hillCoef}`;
-                
-                const hillEffect = document.getElementById('hillEffectDisplay');
-                hillEffect.textContent = sim?.hillModel?.getClinicalSignificance() || 'Calculating...';
             } else {
-                progestogenPanel.style.display = 'none';
                 if (typeof sim !== 'undefined') {
                     sim.hillModel = null;
                 }
