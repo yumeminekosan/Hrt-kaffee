@@ -18,3 +18,4 @@ rootProject.name = "hrt-kaffee-ar"
 
 include(":rigor-core")
 include(":composeApp")
+include(":webApp")
