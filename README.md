@@ -10,6 +10,7 @@
 - **参数计算**：计算 Cmax、Cmin、Tmax、AUC 等药代动力学参数
 - **多药物交互**：支持 CPA 等药物对 CYP3A4 酶抑制的模拟
 - **给药方案优化**：比较不同给药方案的效果
+- **AR 严谨计算实验室**：独立 Kotlin/Compose 模块；从同一微观跳过程生成受体竞争、反事实、随机过程与大偏差对象
 
 ## 文件说明
 
@@ -39,6 +40,16 @@ bun run dev
 # 或直接打开模拟器
 open pkpd-simulator-v3.html
 ```
+
+### Kotlin AR 战术面板
+
+```bash
+cd ar-kotlin
+gradle test
+gradle :composeApp:run
+```
+
+本地构建要求 JDK 17 与 Gradle 9.5.0；CI 固定使用相同版本。逐箭头审计见 [`ar-kotlin/docs/FLOW_AUDIT.md`](ar-kotlin/docs/FLOW_AUDIT.md)，模型边界、成立条件和验证状态见 [`ar-kotlin/docs/RIGOR_MATRIX.md`](ar-kotlin/docs/RIGOR_MATRIX.md)。该模块是研究模拟，不提供诊断或给药建议。
 
 ## 在线访问
 
