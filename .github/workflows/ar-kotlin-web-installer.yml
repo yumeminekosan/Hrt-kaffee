@@ -922,3 +922,4 @@ jobs:
           git diff --cached --check
           git commit -m "add rigorous Kotlin AR modeling core and tactical UI"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+# start installer
