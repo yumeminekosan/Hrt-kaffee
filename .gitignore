@@ -43,7 +43,7 @@ local-*
 .claude
 .z-ai-config
 dev.log
-test
+/test
 prompt
 
 server.log
@@ -70,3 +70,9 @@ agent-ctx/
 .vscode/
 *.swp
 *.swo
+
+# Kotlin / Gradle
+.gradle/
+.kotlin/
+**/build/
+ar-kotlin/composeApp/*.log
