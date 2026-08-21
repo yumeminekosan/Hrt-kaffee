@@ -44,7 +44,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,8 +82,10 @@ private val terminalColors = darkColorScheme(
 @Composable
 fun ArSuppressionApp() {
     MaterialTheme(colorScheme = terminalColors) {
-        Surface(modifier = Modifier.fillMaxSize(), color = TerminalBlack) {
-            ArSuppressionPanel()
+        ArTypography {
+            Surface(modifier = Modifier.fillMaxSize(), color = TerminalBlack) {
+                ArSuppressionPanel()
+            }
         }
     }
 }
@@ -200,7 +201,7 @@ private fun TacticalHeader(compact: Boolean) {
             Text(
                 text = "K/AR // RECEPTOR OPERATIONS",
                 color = SignalCyan,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalArFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.4.sp,
                 fontSize = 13.sp,
@@ -223,7 +224,7 @@ private fun TacticalHeader(compact: Boolean) {
             Text(
                 text = "EXACT COUNTERFACTUAL NODE  A-05",
                 color = TextMuted,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalArFontFamily.current,
                 fontSize = 11.sp,
             )
         }
@@ -274,7 +275,7 @@ private fun PresetStrip(
                 Text(
                     text = "$label  ${percentFromBasisPoints(direct)} / ${percentFromBasisPoints(upstream)}",
                     color = if (active) SignalCyan else TextMuted,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = LocalArFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = if (compact) 8.sp else 10.sp,
                     maxLines = 1,
@@ -348,7 +349,7 @@ private fun InterventionSlider(
         Text(
             text = percentFromBasisPoints(basisPoints),
             color = accent,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontWeight = FontWeight.Bold,
             fontSize = 19.sp,
         )
@@ -413,11 +414,11 @@ private fun SignalGauge(result: ArSuppressionResult, modifier: Modifier) {
                 Text(
                     text = result.signalRelativeToControl.asPercent(0),
                     color = TextPrimary,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = LocalArFontFamily.current,
                     fontWeight = FontWeight.Black,
                     fontSize = 42.sp,
                 )
-                Text("OF CONTROL", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                Text("OF CONTROL", color = TextMuted, fontFamily = LocalArFontFamily.current, fontSize = 11.sp)
                 Spacer(Modifier.height(9.dp))
                 StatusTag("不是“总阻断率”", AlertCoral)
             }
@@ -437,7 +438,7 @@ private fun EvidenceRail(result: ArSuppressionResult, modifier: Modifier) {
         Text(
             text = "DECLARED ASSUMPTIONS",
             color = TextMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontSize = 10.sp,
             letterSpacing = 1.4.sp,
         )
@@ -485,7 +486,7 @@ private fun MechanismLanes(result: ArSuppressionResult, wide: Boolean) {
             Text(
                 text = "NON-ADDITIVITY  Δ = ${result.nonAdditivity.asSignedPercent()}",
                 color = if (result.nonAdditivity >= Rational.ZERO) AlertCoral else TextMuted,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalArFontFamily.current,
                 fontSize = 11.sp,
             )
         }
@@ -535,20 +536,20 @@ private fun MechanismCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(code, color = accent, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp)
+                Text(code, color = accent, fontFamily = LocalArFontFamily.current, fontSize = 10.sp, letterSpacing = 1.sp)
                 Text(title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Spacer(Modifier.height(8.dp))
-                Text(path, color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                Text(path, color = TextMuted, fontFamily = LocalArFontFamily.current, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     contribution.asSignedPercent(),
                     color = accent,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = LocalArFontFamily.current,
                     fontWeight = FontWeight.Black,
                     fontSize = 25.sp,
                 )
-                Text("SHAPLEY / MODEL", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 9.sp)
+                Text("SHAPLEY / MODEL", color = TextMuted, fontFamily = LocalArFontFamily.current, fontSize = 9.sp)
                 Text("条件反事实 ${conditional.asSignedPercent()}", color = TextMuted, fontSize = 10.sp)
             }
         }
@@ -596,12 +597,12 @@ private fun CounterfactualCell(
             .padding(14.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("WORLD $code", color = accent, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
-            Text((signal / control).asPercent(), color = TextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            Text("WORLD $code", color = accent, fontFamily = LocalArFontFamily.current, fontSize = 10.sp)
+            Text((signal / control).asPercent(), color = TextPrimary, fontFamily = LocalArFontFamily.current, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))
         Text(label, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        Text("raw = $signal", color = TextMuted, fontFamily = FontFamily.Monospace, fontSize = 9.sp)
+        Text("raw = $signal", color = TextMuted, fontFamily = LocalArFontFamily.current, fontSize = 9.sp)
     }
 }
 
@@ -644,7 +645,7 @@ private fun SectionLabel(index: String, label: String) {
             text = index,
             color = TerminalBlack,
             modifier = Modifier.background(TextPrimary).padding(horizontal = 7.dp, vertical = 2.dp),
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontWeight = FontWeight.Black,
             fontSize = 10.sp,
         )
@@ -652,7 +653,7 @@ private fun SectionLabel(index: String, label: String) {
         Text(
             text = label,
             color = TextMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontSize = 10.sp,
             letterSpacing = 1.1.sp,
         )
@@ -665,7 +666,7 @@ private fun StatusTag(text: String, color: Color) {
         text = text,
         color = color,
         modifier = Modifier.border(1.dp, color.copy(alpha = 0.7f)).padding(horizontal = 7.dp, vertical = 3.dp),
-        fontFamily = FontFamily.Monospace,
+        fontFamily = LocalArFontFamily.current,
         fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
         letterSpacing = 0.7.sp,
