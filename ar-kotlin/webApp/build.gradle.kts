@@ -1,20 +1,11 @@
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
-import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 
 plugins {
     kotlin("multiplatform")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.compose")
-}
-
-project.plugins.withType<WasmNodeJsPlugin> {
-    project.the<WasmNodeJsEnvSpec>().apply {
-        download.set(false)
-        downloadBaseUrl.set(null as String?)
-    }
 }
 
 @OptIn(ExperimentalWasmDsl::class)
