@@ -1,11 +1,17 @@
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenEnvSpec
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenPlugin
 
 plugins {
     kotlin("multiplatform")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.compose")
+}
+
+plugins.withType<BinaryenPlugin> {
+    the<BinaryenEnvSpec>().downloadBaseUrl.set(null as String?)
 }
 
 @OptIn(ExperimentalWasmDsl::class)
