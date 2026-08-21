@@ -28,6 +28,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.16.0"
+          package-manager-cache: false
       - uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: "9.5.0"
