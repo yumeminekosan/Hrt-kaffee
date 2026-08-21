@@ -52,7 +52,7 @@ jobs:
           cp -R ar-kotlin/webApp/build/dist/wasmJs/productionExecutable/. _site/ar/
           test -f _site/index.html
           test -f _site/ar/index.html
-          grep -q 'HRT-KAFFEE' _site/index.html
+          grep -q 'HRT<span>-KAFFEE</span>' _site/index.html
           grep -q 'href="ar/"' _site/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
