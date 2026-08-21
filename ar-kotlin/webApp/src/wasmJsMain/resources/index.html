@@ -43,49 +43,11 @@
       background: linear-gradient(90deg, #54e6e0, transparent);
       animation: scan 1.1s ease-in-out infinite alternate;
     }
-    #boot-failure {
-      position: fixed;
-      inset: 1rem;
-      z-index: 9999;
-      overflow: auto;
-      margin: 0;
-      padding: 1rem;
-      border: 1px solid #ff6b5f;
-      color: #ffd7d3;
-      background: rgba(20, 8, 10, .96);
-      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: pre-wrap;
-    }
     @keyframes scan { to { transform: scaleX(.2); opacity: .35; } }
   </style>
 </head>
 <body>
   <div id="loading-shell">INITIALIZING KOTLIN/WASM NODE</div>
-  <script>
-    if (new URLSearchParams(location.search).get("diagnostic") === "errors") {
-      const describe = (value, depth = 0) => {
-        if (depth > 5 || value == null) return String(value);
-        if (typeof value !== "object") return String(value);
-        const fields = ["name", "message", "stack", "cause", "suppressed"];
-        return fields
-          .filter((field) => field in value)
-          .map((field) => `${field}: ${describe(value[field], depth + 1)}`)
-          .join("\n") || Object.prototype.toString.call(value);
-      };
-      const report = (label, values) => {
-        const node = document.getElementById("boot-failure") || document.body.appendChild(document.createElement("pre"));
-        node.id = "boot-failure";
-        node.textContent += `${label}\n${values.map((value) => describe(value)).join("\n---\n")}\n\n`;
-      };
-      addEventListener("error", (event) => report("WINDOW ERROR", [event.error, event.message]));
-      addEventListener("unhandledrejection", (event) => report("UNHANDLED REJECTION", [event.reason]));
-      const originalConsoleError = console.error.bind(console);
-      console.error = (...values) => {
-        report("CONSOLE ERROR", values);
-        originalConsoleError(...values);
-      };
-    }
-  </script>
   <script src="hrt-kaffee-ar.js"></script>
 </body>
 </html>
