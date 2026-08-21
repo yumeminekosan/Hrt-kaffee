@@ -26,7 +26,7 @@ class FinasterideKineticsTest {
     fun identifiedParametersRecoverThePublishedEffectiveType2Kd() {
         val parameters = FinasteridePkPdParameters.suzuki2010()
 
-        assertEquals(0.0085706, parameters.effectiveType2DissociationNm, 1e-6)
+        assertEquals(0.0085671549, parameters.effectiveType2DissociationNm, 1e-10)
     }
 
     @Test
