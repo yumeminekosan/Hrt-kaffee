@@ -16,7 +16,7 @@ kotlin {
         }
     }
 
-    js(IR) {
+    js {
         browser {
             commonWebpackConfig {
                 outputFileName = "hrt-kaffee-kinetics.js"
@@ -30,9 +30,6 @@ kotlin {
     }
 
     sourceSets {
-        jsMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-browser:0.3")
-        }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
