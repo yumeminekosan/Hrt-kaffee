@@ -17,7 +17,7 @@ flowchart TD
     A --> J["空间晶格上的交互粒子系统"]
     J --> K["L,K→∞：水动力 PDE"]
     A --> L["链复形、守恒量与反应循环"]
-    A --> M["非那/度他雄胺群体 PK/PD 投影<br/>原页面仅显示输入、结果与曲线"]
+    A --> M["非那/度他雄胺与孕激素–PR/GnRH 群体投影<br/>原页面仅显示输入、结果与曲线"]
 ```
 
 The quantum branch is deliberately one-way through `Q1`: no direct `Q --> A` edge exists.
@@ -47,6 +47,14 @@ dutasteride complex was observed. `DutasterideRigorousPipeline` applies the same
 generator/density/chain rule. `embeddedEngine` is parity-tested against both JVM models and writes
 only dose/time observables into the existing Hrt-kaffee page; it never renders the internal theorem or
 operator names.
+
+`ProgestogenGnRHMicroscopicNetwork` adds `PG + PR ⇄ PR·PG` and reversible
+`GNRH_READY ⇄ GNRH_INHIBITED` feedback channels to reversible PK reservoir channels. Its structural
+record assigns PDB `1A28` to the observed human PR–progesterone complex and explicitly rejects a
+direct progesterone–GnRH-receptor assignment. `ProgestogenGnRHRigorousPipeline` passes the same
+network into the exact generator, density symbol and chain complex; the generic random-time-change,
+nonlinear-generator/Hamiltonian, Doob/Gillespie and spatial/PDE checks consume it in the integration
+test. The original progestogen panel renders only regimen inputs, PR/GnRH observables and curves.
 
 | Requested node or arrow | Status | Kotlin realization and check | Honest boundary |
 |---|---|---|---|

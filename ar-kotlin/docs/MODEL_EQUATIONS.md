@@ -88,6 +88,41 @@ the exact generator, random-time-change/jump-martingale audit, density symbol an
 tilt/Doob construction, optional spatial lift and stoichiometric chain complex. The original page
 renders only regimen controls, enzyme-inhibition observables, DHT suppression and curves.
 
+## 0.75. Progesterone binds PR and feeds back on the GnRH pulse generator
+
+Progesterone is not encoded as a competitive antagonist at the GnRH receptor. The structural anchor is
+the experimentally observed human progesterone-receptor ligand-binding domain with progesterone,
+PDB `1A28` at `1.8 Å` resolution (Williams and Sigler, *Nature* 393 (1998) 392–396, DOI
+`10.1038/30775`). Human recombinant PR competitive-binding measurements place progesterone agonists
+in the low-nanomolar range; the browser uses an apparent P4 PR half-occupancy value of `9.01 nM` from
+the comparative assay used for its cross-progestin profiles.
+
+For gut amount `Xg`, total plasma concentration `C`, PR-bound fraction `B`, and delayed feedback state
+`F`, the hidden population projection is
+
+```text
+dXg/dt = -ka Xg
+dC/dt  = ka Fa Xg/V - ke C
+dB/dt  = kon C(1-B) - koff B,           koff = kon KPR
+dF/dt  = kfb(B-F)
+SGnRH   = smax F,                        AGnRH = 1-SGnRH.
+```
+
+For oral micronized P4, `ka=0.50 h⁻¹`, `ke=0.70 h⁻¹`, `V=50 L` and apparent `Fa=0.028` reproduce the
+label mean `Cmax=17.3 ng/mL` after 100 mg. The label reports strong between-person dispersion and does
+not establish an individual response. The feedback half-time is declared as `36 h` and `smax=0.85`;
+this prevents instantaneous PR occupancy from being presented as instantaneous GnRH suppression.
+Human pulse studies support PR-mediated gonadotropin feedback but show context dependence: E2/P4
+exposure over days suppresses LH pulse frequency, while a single P4 exposure in E2-pretreated women
+did not reduce pulse frequency within 12 hours. The UI therefore labels the feedback curve as an
+E2-primed population projection.
+
+`ProgestogenGnRHMicroscopicNetwork` contains reversible absorption, elimination, ligand–PR binding,
+and pulse-generator ready/inhibited channels. That one table feeds the exact generator, random-time-
+change identity, nonlinear generator/Hamiltonian, tilt/Doob/Gillespie construction, optional spatial
+lift and stoichiometric chain complex. Synthetic progestogen outputs are explicitly marked as relative
+structure/PK extrapolations rather than P4-calibrated GnRH efficacy claims.
+
 ## 1. Mechanisms remain separate
 
 The reduced panel has two control coordinates:
