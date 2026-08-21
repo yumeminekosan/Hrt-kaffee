@@ -1,5 +1,56 @@
 # AR model equations and conventions
 
+## 0. Finasteride is an enzyme inhibitor, not an AR competitor
+
+The finasteride path is kept separate from the direct AR-competition coordinate. Structurally,
+human SRD5A2 is a seven-transmembrane enzyme whose inhibited state contains an
+NADP-dihydrofinasteride adduct in the membrane cavity (PDB `7BW1`; Zhang et al., *Nature
+Communications* 11, 5430 (2020), DOI `10.1038/s41467-020-19249-z`). The microscopic model
+therefore uses `SRD5A2_FIN`, never `FIN_AR`.
+
+The user-facing time course is the population PK/PD model identified by Suzuki et al., *Drug
+Metabolism and Pharmacokinetics* 25 (2010) 208–213, DOI `10.2133/dmpk.25.208`. With gut
+amount `Xg` (nmol), free plasma concentration `Cc` (nM), bound type-2 enzyme amount `XcE`
+(nmol), and total enzyme amount `Etot`, the hidden equations are
+
+```text
+dXg/dt  = -ka Xg
+dCc/dt  = ka F Xg/Vc + koff XcE/Vc - ke Cc - kon Cc (Etot-XcE)
+dXcE/dt = kon Cc Vc (Etot-XcE) - koff XcE
+I2       = XcE/Etot
+I1       = Cc/(Cc+Ki1)
+```
+
+For normalized serum DHT `D`, type-2 contribution `f2`, and `Kin=kout` at baseline,
+
+```text
+dD/dt = kout [f2(1-I2) + (1-f2)(1-I1) - D].
+```
+
+The identified values used by both JVM and Wasm are `F=0.8`, `ka=1.87 h⁻¹`, `ke=0.177
+h⁻¹`, `Vc=73.7 L`, `kon=0.0293 nmol⁻¹ h⁻¹`, `koff=0.0185 h⁻¹`, `Etot=320 nmol`,
+`f2=0.574`, `kout=0.188 h⁻¹`, and `Ki1=220 nM`. The fitted coarse-grained dissociation scale is
+
+```text
+Kd,eff = koff/(kon Vc) = 0.00857 nM.
+```
+
+This fitted `Kd,eff` is not promoted to a universal microscopic free energy: the structural
+mechanism contains intermediate chemistry and a long-lived adduct. Bull et al., *JACS* 118
+(1996) 2359–2365, DOI `10.1021/ja953069t`, measured mechanism-based processing for human
+type 2 with `ki/Ki = 1×10⁶ M⁻¹ s⁻¹` and an enzyme-inhibitor-complex release half-life near one
+month. The population model instead retains the reversible effective compartment because that
+model was identified against plasma-finasteride and serum-DHT time courses.
+
+Once-daily doses are pulses into `Xg`; RK4 integrates only the displayed population projection.
+The JVM implementation certifies it by step halving. Doses above 5 mg/day are displayed as
+repeated-dose extrapolations, not inferred extra clinical benefit. The finite molecule-count
+network in `FinasterideMicroscopicNetwork` supplies the strict CTMC/generator/limit/large-
+deviation/Doob/spatial/chain-complex layers, while the browser exposes only inputs, endpoint
+metrics, and curves. As in the AR network, any nuclear-quantum correction must enter through an
+`ExactQuantumRateCalibration` carrying externally identified `ΔΔGbind`/`ΔΔG‡`, provenance and
+named reaction IDs; the thermal de Broglie wavelength alone never changes a finasteride rate.
+
 ## 1. Mechanisms remain separate
 
 The reduced panel has two control coordinates:

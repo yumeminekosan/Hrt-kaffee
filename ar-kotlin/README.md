@@ -4,7 +4,7 @@ This directory is deliberately isolated from the existing Next.js simulator. It 
 
 - `rigor-core`: dependency-light Kotlin/JVM mathematics and domain contracts.
 - `composeApp`: an original tactical-terminal UI built with Compose Multiplatform.
-- `webApp`: the responsive Kotlin/Wasm tactical-terminal demo deployed to GitHub Pages.
+- `webApp`: the responsive Kotlin/Wasm finasteride input/result/curve interface deployed to GitHub Pages.
 - `rigor-core/.../NuclearQuantumBinding.kt`: a hard boundary from thermal de Broglie scale to externally calibrated free-energy/rate corrections; no wavelength-to-binding shortcut.
 - `docs/FLOW_AUDIT.md`: arrow-by-arrow implementation audit and conceptual-question resolution.
 - `docs/RIGOR_MATRIX.md`: claim-by-claim status, assumptions, and falsification checks.
@@ -44,4 +44,4 @@ Every output carries one of these evidence classes:
 
 No `Double` trajectory is presented as a proof. This is research software, not medical advice.
 
-The browser now renders the complete audited CTMC → Kurtz/LDP/Doob/PDE/topology map. Its quantum controls show the thermal de Broglie scale only; AR binding and jump rates remain unchanged until a sourced `ΔΔGbind`/`ΔΔG‡` calibration is supplied.
+The complete CTMC → Kurtz/LDP/Doob/PDE/topology map remains in Kotlin and the audit documents. It is intentionally absent from the user interface, which exposes only regimen inputs, 5αR binding/inhibition outputs, serum-DHT results and time curves. Finasteride is modeled as an upstream 5α-reductase inhibitor, never as a direct AR competitor.

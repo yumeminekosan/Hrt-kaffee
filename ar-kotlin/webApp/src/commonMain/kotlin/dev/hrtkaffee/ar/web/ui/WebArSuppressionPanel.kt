@@ -92,77 +92,7 @@ fun ArSuppressionApp() {
 
 @Composable
 fun ArSuppressionPanel(modifier: Modifier = Modifier) {
-    val model = remember { ArSuppressionModel(ArEquilibriumParameters.illustrative()) }
-    var directBasisPoints by remember { mutableIntStateOf(4_200) }
-    var upstreamBasisPoints by remember { mutableIntStateOf(5_800) }
-    val result = remember(directBasisPoints, upstreamBasisPoints) {
-        model.evaluate(
-            ArIntervention(
-                directArCompetition = BasisPoints(directBasisPoints),
-                fiveAlphaReductaseInhibition = BasisPoints(upstreamBasisPoints),
-            ),
-        )
-    }
-
-    BoxWithConstraints(modifier = modifier.fillMaxSize().background(TerminalBlack)) {
-        val compact = maxWidth < 720.dp
-        val wide = maxWidth >= 1120.dp
-        val horizontalPadding = if (compact) 16.dp else 34.dp
-
-        TacticalGrid(Modifier.fillMaxSize())
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = horizontalPadding, vertical = if (compact) 18.dp else 26.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            TacticalHeader(compact)
-            MolecularTheoryFlowPanel(wide = wide, compact = compact)
-            PresetStrip(
-                directBasisPoints = directBasisPoints,
-                upstreamBasisPoints = upstreamBasisPoints,
-                onPreset = { direct, upstream ->
-                    directBasisPoints = direct
-                    upstreamBasisPoints = upstream
-                },
-                compact = compact,
-            )
-
-            if (wide) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(320.dp),
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                ) {
-                    InputDeck(
-                        directBasisPoints = directBasisPoints,
-                        upstreamBasisPoints = upstreamBasisPoints,
-                        onDirectChange = { directBasisPoints = it },
-                        onUpstreamChange = { upstreamBasisPoints = it },
-                        modifier = Modifier.weight(0.88f).fillMaxHeight(),
-                    )
-                    SignalGauge(result, Modifier.weight(0.72f).fillMaxHeight())
-                    EvidenceRail(result, Modifier.weight(0.9f).fillMaxHeight())
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    InputDeck(
-                        directBasisPoints = directBasisPoints,
-                        upstreamBasisPoints = upstreamBasisPoints,
-                        onDirectChange = { directBasisPoints = it },
-                        onUpstreamChange = { upstreamBasisPoints = it },
-                        modifier = Modifier.fillMaxWidth().height(326.dp),
-                    )
-                    SignalGauge(result, Modifier.fillMaxWidth().height(300.dp))
-                    EvidenceRail(result, Modifier.fillMaxWidth().height(310.dp))
-                }
-            }
-
-            MechanismLanes(result, wide)
-            CounterfactualDeck(result, wide)
-            ModelBoundaryFooter()
-        }
-    }
+    FinasterideKineticsPanel(modifier)
 }
 
 @Composable

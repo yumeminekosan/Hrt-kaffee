@@ -4,6 +4,9 @@ import dev.hrtkaffee.ar.web.model.ArEquilibriumParameters
 import dev.hrtkaffee.ar.web.model.ArIntervention
 import dev.hrtkaffee.ar.web.model.ArSuppressionModel
 import dev.hrtkaffee.ar.web.model.BasisPoints
+import dev.hrtkaffee.ar.web.model.FinasterideCurvePoint
+import dev.hrtkaffee.ar.web.model.FinasterideKineticModel
+import dev.hrtkaffee.ar.web.model.FinasterideRegimen
 import dev.hrtkaffee.ar.web.model.MolecularBindingTheoryMap
 import dev.hrtkaffee.ar.web.model.Rational
 import dev.hrtkaffee.ar.web.model.TheoryNodeId
@@ -30,161 +33,77 @@ internal fun renderDomFallback(root: HTMLElement) {
           <div class="noise"></div>
           <header class="hero">
             <div>
-              <p class="eyebrow">K/AR // RECEPTOR OPERATIONS</p>
-              <h1>雄激素受体抑制 · 分子随机动力学</h1>
-              <p class="lede">从离散分子数 CTMC 到稀有事件、空间极限与核量子校准边界。</p>
+              <p class="eyebrow">K/5AR // FINASTERIDE KINETICS</p>
+              <h1>非那雄胺 · 结合占有与 DHT 时间曲线</h1>
+              <p class="lede">输入每日剂量与观察天数；计算每日口服后的动态结果。</p>
             </div>
             <div class="runtime-stack">
               <span class="tag cyan">KOTLIN/WASM · LIVE</span>
               <span class="tag violet">DOM SAFE MODE</span>
-              <small>WebGL2 unavailable · exact models retained</small>
+              <small>WebGL2 unavailable · Kotlin model retained</small>
             </div>
           </header>
 
-          <section class="panel theory-panel">
-            <div class="panel-kicker">00 · FLOWCHART TD // AUDITED</div>
+          <section class="panel fin-panel">
+            <div class="panel-kicker">01 · INPUT / REGIMEN</div>
             <div class="section-head">
               <div>
-                <h2>分子结合：微观跳过程 → 极限、稀有事件与空间拓扑</h2>
-                <p>每一条箭头都对应 Kotlin 对象、测试与显式理论门槛。</p>
-              </div>
-              <div class="legend">
-                <span class="tag cyan">EXACT CORE</span>
-                <span class="tag amber">GATED</span>
-                <span class="tag coral">INPUT OPEN</span>
-              </div>
-            </div>
-
-            <div class="telemetry-grid">
-              <label class="slider-card" for="mass-slider">
-                <span>核质量 / u</span><strong id="mass-value">1</strong>
-                <input id="mass-slider" type="range" min="1" max="128" value="1" />
-              </label>
-              <label class="slider-card" for="temperature-slider">
-                <span>温度 / K</span><strong id="temperature-value">310</strong>
-                <input id="temperature-slider" type="range" min="20" max="400" value="310" />
-              </label>
-              <div class="lambda-card">
-                <span>THERMAL λ<sub>th</sub></span>
-                <strong id="lambda-value">— pm</strong>
-                <small>h / √(2πmk<sub>B</sub>T)</small>
-              </div>
-            </div>
-
-            <div class="flow-chain quantum-chain">
-              ${nodeCard(TheoryNodeId.QUANTUM_SCALE)}
-              ${arrow("不能跳过校准")}
-              ${nodeCard(TheoryNodeId.QUANTUM_CALIBRATION)}
-              ${arrow("修正 ΔG 与跃迁率")}
-              ${nodeCard(TheoryNodeId.DISCRETE_CTMC)}
-            </div>
-            <div class="major-arrow">同一反应表 ↓ 生成元 / 随机时间变换 / 跳鞅</div>
-            ${nodeCard(TheoryNodeId.JUMP_STRUCTURE, "node-wide")}
-
-            <div class="lane-grid">
-              ${lane("LAW OF LARGE NUMBERS", listOf(TheoryNodeId.FLUID_LIMIT))}
-              ${lane(
-                  "RARE TRAJECTORY GEOMETRY",
-                  listOf(
-                      TheoryNodeId.NONLINEAR_GENERATOR,
-                      TheoryNodeId.HAMILTONIAN_HJ,
-                      TheoryNodeId.METASTABILITY,
-                  ),
-              )}
-              ${lane(
-                  "CONDITIONED PATHS",
-                  listOf(
-                      TheoryNodeId.TILTED_OPERATOR,
-                      TheoryNodeId.DOOB_TRANSFORM,
-                      TheoryNodeId.DRIVEN_GILLESPIE,
-                  ),
-              )}
-            </div>
-
-            <div class="parallel-label">PARALLEL LIFTS FROM NODE A</div>
-            <div class="parallel-grid">
-              ${lane("SPATIAL", listOf(TheoryNodeId.SPATIAL_PARTICLES, TheoryNodeId.HYDRODYNAMIC_PDE))}
-              ${lane("TOPOLOGY", listOf(TheoryNodeId.CHAIN_COMPLEX))}
-              ${lane("LIVE PROJECTION", listOf(TheoryNodeId.LIVE_EQUILIBRIUM_PROJECTION))}
-            </div>
-
-            <aside class="quantum-boundary">
-              <strong>Q!</strong>
-              <div>
-                <b>λ<sub>th</sub> 不是结合自由能，也不是“结合增强率”。</b>
-                <p>轻核、低温会增大离域尺度；零点能、隧穿和振动模竞争可增强或削弱结合。AR 跳率保持不变，直到提供经审计的 ΔΔG<sub>bind</sub> / ΔΔG‡。</p>
-              </div>
-            </aside>
-
-            <div class="reference-grid">
-              ${MolecularBindingTheoryMap.references.joinToString("\n") { reference ->
-                  """<div class="reference"><b>${reference.code}</b><span>${reference.citation}</span><code>${reference.locator}</code></div>"""
-              }}
-            </div>
-          </section>
-
-          <section class="panel ar-panel">
-            <div class="panel-kicker">01 · EXACT COUNTERFACTUAL NODE A-05</div>
-            <div class="section-head">
-              <div>
-                <h2>AR 双机制战术面板</h2>
-                <p>四个反事实世界使用同一套 Kotlin exact Rational 模型。</p>
+                <h2>每日口服方案</h2>
+                <p>给药间隔固定为 24 h。</p>
               </div>
               <span class="tag green">MODEL ONLINE</span>
             </div>
 
             <div class="preset-row">
-              <button id="preset-control" type="button">CONTROL · 0 / 0</button>
-              <button id="preset-balanced" class="active" type="button">BALANCED · 42 / 58</button>
-              <button id="preset-direct" type="button">DIRECT+ · 76 / 36</button>
+              <button id="preset-02" type="button">0.2 mg</button>
+              <button id="preset-1" type="button">1 mg</button>
+              <button id="preset-5" type="button">5 mg</button>
+              <button id="preset-15" class="active" type="button">15 mg</button>
             </div>
 
-            <div class="operations-grid">
+            <div class="fin-operations-grid">
               <div class="control-deck">
-                <label for="direct-slider">
-                  <span><b>AR-C</b> 直接 AR 竞争</span><strong id="direct-value">42.0%</strong>
-                  <small>改变受体竞争分母；不改变 DHT 生成率</small>
-                  <input id="direct-slider" type="range" min="0" max="10000" value="4200" />
+                <label for="dose-slider">
+                  <span><b>DOSE</b> 每日口服剂量</span><strong id="dose-value">15.00 mg/day</strong>
+                  <input id="dose-slider" type="range" min="0" max="2000" value="1500" />
                 </label>
-                <label for="upstream-slider">
-                  <span><b>5AR</b> 5αR 上游抑制</span><strong id="upstream-value">58.0%</strong>
-                  <small>改变 T→DHT 通量；不占据 AR 位点</small>
-                  <input id="upstream-slider" type="range" min="0" max="10000" value="5800" />
+                <label for="days-slider">
+                  <span><b>TIME</b> 连续观察</span><strong id="days-value">14 days</strong>
+                  <input id="days-slider" type="range" min="1" max="42" value="14" />
                 </label>
               </div>
 
               <div class="signal-core">
-                <span>COMBINED SIGNAL</span>
-                <strong id="signal-relative">—</strong>
-                <small>relative to control</small>
+                <span>ENDPOINT DHT SUPPRESSION</span>
+                <strong id="dht-final">—</strong>
+                <small>serum DHT at selected horizon</small>
                 <div class="signal-bar"><i id="signal-bar"></i></div>
-                <p>总抑制 <b id="suppression-total">—</b></p>
+                <p>峰值抑制 <b id="dht-peak">—</b></p>
               </div>
 
               <div class="metric-deck">
-                <div><span>DIRECT SHAPLEY</span><b id="direct-shapley">—</b></div>
-                <div><span>UPSTREAM SHAPLEY</span><b id="upstream-shapley">—</b></div>
-                <div><span>NON-ADDITIVITY</span><b id="non-additivity">—</b></div>
+                <div><span>5αR2 BOUND</span><b id="type2-bound">—</b></div>
+                <div><span>5αR1 INHIBITED</span><b id="type1-inhibited">—</b></div>
+                <div><span>FREE FINASTERIDE</span><b id="fin-concentration">—</b></div>
               </div>
             </div>
 
-            <div class="world-grid">
-              <div><span>CONTROL</span><b id="world-control">—</b><small>00 / 00</small></div>
-              <div><span>DIRECT ONLY</span><b id="world-direct">—</b><small>AR-C only</small></div>
-              <div><span>UPSTREAM ONLY</span><b id="world-upstream">—</b><small>5αR only</small></div>
-              <div><span>COMBINED</span><b id="world-combined">—</b><small>joint world</small></div>
+            <div class="curve-head">
+              <b>动态曲线 / TIME COURSE</b>
+              <div><span class="curve-key cyan-key"></span>DHT 抑制 <span class="curve-key amber-key"></span>5αR2 占有 <span class="curve-key coral-key"></span>5αR1 抑制</div>
             </div>
+            <div id="curve-host" class="curve-host"></div>
 
-            <aside class="model-boundary">
-              <b>MODEL BOUNDARY</b>
-              <span>展示参数仅用于研究演示；不是临床疗效、剂量换算或安全建议。浏览器无 WebGL2 时，本页仍由 Kotlin/Wasm DOM 路径运行同一精确模型。</span>
+            <aside id="fin-boundary" class="model-boundary extrapolated">
+              <b id="fin-boundary-label">EXTRAPOLATED DOSE</b>
+              <span id="fin-boundary-text">每日剂量高于 5 mg：曲线是模型外推，不表示额外临床收益；非那雄胺也不是直接 AR 拮抗剂。</span>
             </aside>
+            <p class="fin-source">参数：Suzuki et al. 2010, DOI 10.2133/dmpk.25.208 · 结构：PDB 7BW1 · 仅供研究模拟</p>
           </section>
         </main>
     """.trimIndent()
 
-    bindQuantumControls()
-    bindArControls()
+    bindFinasterideControls()
 }
 
 private fun nodeCard(id: TheoryNodeId, extraClass: String = ""): String {
@@ -290,6 +209,89 @@ private fun bindArControls() {
     update()
 }
 
+private fun bindFinasterideControls() {
+    val model = FinasterideKineticModel()
+    val dose = input("dose-slider")
+    val days = input("days-slider")
+    val presets = listOf(
+        "preset-02" to 20,
+        "preset-1" to 100,
+        "preset-5" to 500,
+        "preset-15" to 1_500,
+    )
+
+    fun update() {
+        val doseCentiMg = dose.value.toInt().coerceIn(0, 2_000)
+        val dayCount = days.value.toInt().coerceIn(1, 42)
+        val result = model.simulate(
+            FinasterideRegimen(dailyDoseMg = doseCentiMg / 100.0, days = dayCount),
+        )
+        val final = result.finalPoint
+        val finalSuppression = final.serumDhtSuppressionFraction
+
+        text("dose-value", "${decimal(doseCentiMg / 100.0, 2)} mg/day")
+        text("days-value", "$dayCount days")
+        text("dht-final", percent(finalSuppression))
+        text("dht-peak", percent(result.peakDhtSuppressionFraction))
+        text("type2-bound", percent(final.type2OccupancyFraction))
+        text("type1-inhibited", percent(final.type1InhibitionFraction))
+        text("fin-concentration", "${decimal(final.plasmaConcentrationNm, 1)} nM")
+        element("signal-bar").style.width = "${(finalSuppression * 100.0).coerceIn(0.0, 100.0)}%"
+        element("curve-host").innerHTML = curveSvg(result.curve, dayCount)
+
+        val inDomain = result.regimen.isRepeatedDoseReferenceDomain
+        element("fin-boundary").className = if (inDomain) "model-boundary" else "model-boundary extrapolated"
+        text("fin-boundary-label", if (inDomain) "POPULATION MODEL" else "EXTRAPOLATED DOSE")
+        text(
+            "fin-boundary-text",
+            if (inDomain) {
+                "非那雄胺作用于 5α-还原酶并降低 T→DHT 通量；它不是直接 AR 拮抗剂。"
+            } else {
+                "每日剂量高于 5 mg：曲线是模型外推，不表示额外临床收益；非那雄胺也不是直接 AR 拮抗剂。"
+            },
+        )
+
+        presets.forEach { (id, presetDose) ->
+            element(id).className = if (doseCentiMg == presetDose) "active" else ""
+        }
+    }
+
+    dose.addEventListener("input", { _: Event -> update() })
+    days.addEventListener("input", { _: Event -> update() })
+    presets.forEach { (id, presetDose) ->
+        element(id).addEventListener("click", { _: Event ->
+            dose.value = presetDose.toString()
+            update()
+        })
+    }
+    update()
+}
+
+private fun curveSvg(points: List<FinasterideCurvePoint>, days: Int): String {
+    val width = 1_000.0
+    val height = 300.0
+    val maximumTime = points.lastOrNull()?.timeHours?.coerceAtLeast(1.0) ?: 1.0
+
+    fun polyline(value: (FinasterideCurvePoint) -> Double): String = points.joinToString(" ") { point ->
+        val x = point.timeHours / maximumTime * width
+        val y = (1.0 - value(point).coerceIn(0.0, 1.0)) * height
+        "${decimal(x, 1)},${decimal(y, 1)}"
+    }
+
+    return """
+        <svg viewBox="0 0 1000 330" role="img" aria-label="Finasteride inhibition time curves">
+          <g class="curve-grid">
+            <path d="M0 0H1000 M0 75H1000 M0 150H1000 M0 225H1000 M0 300H1000" />
+            <path d="M0 0V300 M250 0V300 M500 0V300 M750 0V300 M1000 0V300" />
+          </g>
+          <polyline class="curve-line dht-line" points="${polyline { it.serumDhtSuppressionFraction }}" />
+          <polyline class="curve-line type2-line" points="${polyline { it.type2OccupancyFraction }}" />
+          <polyline class="curve-line type1-line" points="${polyline { it.type1InhibitionFraction }}" />
+          <text x="0" y="326">DAY 0</text><text x="920" y="326">DAY $days</text>
+        </svg>
+    """.trimIndent()
+}
+
 private fun input(id: String): HTMLInputElement =
     document.getElementById(id) as? HTMLInputElement ?: error("Missing input #$id")
 
@@ -317,7 +319,11 @@ private fun signedPercent(value: Double): String {
 }
 
 private fun decimal(value: Double, digits: Int): String {
-    val scale = if (digits == 1) 10L else 1L
+    val scale = when (digits) {
+        2 -> 100L
+        1 -> 10L
+        else -> 1L
+    }
     val scaled = (abs(value) * scale).roundToLong()
     val sign = if (value < 0.0) "−" else ""
     val whole = scaled / scale
@@ -413,7 +419,20 @@ private fun fallbackStyles(): String = """
     .metric-deck { display: grid; gap: 9px; }.metric-deck div { display: flex; align-items: center; justify-content: space-between; padding-bottom: 9px; border-bottom: 1px solid var(--grid); }.metric-deck div:last-child { border: 0; }.metric-deck span { color: var(--muted); font: 800 9px var(--ops-font); }.metric-deck b { color: var(--violet); font: 900 18px var(--ops-font); }
     .world-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 14px; }.world-grid div { display: grid; gap: 5px; padding: 13px; border: 1px solid var(--grid); background: rgba(0,0,0,.12); }.world-grid span { color: var(--muted); font: 800 9px var(--ops-font); }.world-grid b { color: var(--cyan); font: 900 22px var(--ops-font); }.world-grid small { color: var(--muted); }
     .model-boundary { border-color: var(--grid); background: rgba(0,0,0,.15); }.model-boundary b { color: var(--coral); font: 900 10px var(--ops-font); }.model-boundary span { color: var(--muted); font-size: 10px; line-height: 1.45; }
-    @media (max-width: 1100px) { .lane-grid, .parallel-grid, .operations-grid { grid-template-columns: 1fr; }.flow-lane { display: grid; gap: 6px; }.reference-grid { grid-template-columns: repeat(2,1fr); } }
+    .fin-panel::before { background: linear-gradient(90deg, var(--cyan), var(--amber), transparent 72%); }
+    .fin-panel .preset-row { grid-template-columns: repeat(4,1fr); }
+    .fin-operations-grid { display: grid; grid-template-columns: 1.05fr .72fr .82fr; gap: 14px; }
+    .curve-head { display: flex; justify-content: space-between; gap: 18px; margin: 20px 0 8px; color: var(--muted); font: 800 10px var(--ops-font); }
+    .curve-head > div { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+    .curve-key { width: 18px; height: 2px; display: inline-block; margin-left: 8px; }.cyan-key { background: var(--cyan); }.amber-key { background: var(--amber); }.coral-key { background: var(--coral); }
+    .curve-host { min-height: 310px; padding: 10px; border: 1px solid var(--grid); background: var(--bg); }
+    .curve-host svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .curve-grid path { fill: none; stroke: rgba(42,56,66,.8); stroke-width: 1; }
+    .curve-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }.dht-line { stroke: var(--cyan); stroke-width: 4; }.type2-line { stroke: var(--amber); stroke-width: 3; }.type1-line { stroke: var(--coral); stroke-width: 3; }
+    .curve-host text { fill: var(--muted); font: 10px var(--ops-font); }
+    .model-boundary.extrapolated { border-color: rgba(255,107,95,.65); background: rgba(255,107,95,.07); }
+    .fin-source { margin: 10px 0 0; color: var(--muted); font-size: 9px; }
+    @media (max-width: 1100px) { .lane-grid, .parallel-grid, .operations-grid, .fin-operations-grid { grid-template-columns: 1fr; }.flow-lane { display: grid; gap: 6px; }.reference-grid { grid-template-columns: repeat(2,1fr); } }
     @media (max-width: 760px) {
       .fallback-root { padding: 18px 14px 40px; }.hero, .section-head { align-items: start; flex-direction: column; }.runtime-stack { justify-items: start; }.panel { padding: 17px; }
       .telemetry-grid, .preset-row, .world-grid, .reference-grid { grid-template-columns: 1fr; }.flow-chain { grid-template-columns: 1fr; }.inline-arrow { width: 100%; }.inline-arrow b { transform: rotate(90deg); }.quantum-chain .flow-node { width: 100%; }
