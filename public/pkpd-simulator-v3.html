@@ -554,7 +554,7 @@
         }
 
         .pg-equation-box::before {
-            content: 'HILL';
+            content: 'MODEL';
             position: absolute;
             top: 0;
             right: 0.5rem;
@@ -652,6 +652,13 @@
             border-top: 1px dashed var(--border-dark);
             font-style: italic;
         }
+
+        .pg-gnrh-results { margin-top: 0.75rem; }
+        .pg-gnrh-results .target-effect-metrics {
+            background: rgba(246, 200, 87, 0.2);
+            border-color: rgba(246, 200, 87, 0.2);
+        }
+        .pg-gnrh-results .target-effect-metric.primary .value { color: var(--accent-gold); }
 
         .pg-divider {
             height: 1px;
@@ -1046,15 +1053,15 @@
             <!-- Based on Hill equation for enzyme inhibition -->
             <!-- Literature: PMID 16645869 (MPA), DrugBank (CPA) -->
             <!-- ===================================================== -->
-            <div class="panel pg-module" id="progestogenInteractionPanel">
+            <div class="panel pg-module" id="progestogenInteractionPanel" aria-busy="false">
                 <div class="pg-header">
                     <span class="pg-title">PROGESTOGEN MODULE</span>
-                    <span class="pg-badge">ENZYME</span>
+                    <span class="pg-badge">KOTLIN · PR</span>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Progestogen Type</label>
-                    <select class="form-select" id="progestogenSelect" onchange="updateProgestogenInteraction()">
+                    <select class="form-select" id="progestogenSelect" onchange="updateProgestogenInteraction(true)">
                         <option value="none">-- SELECT --</option>
                         <optgroup label="▎ SYNTHETIC">
                             <option value="MPA">MPA Medroxyprogesterone</option>
@@ -1069,20 +1076,23 @@
                     </select>
                 </div>
                 
-                <div class="form-row" id="progestogenDoseRow" style="display: none;">
+                <div class="form-row-3" id="progestogenDoseRow" style="display: none;">
                     <div class="form-group">
                         <label class="form-label">Dose <span class="unit" id="progestogenDoseUnit">mg</span></label>
-                        <input type="number" class="form-input" id="progestogenDose" value="10" step="1" onchange="updateProgestogenInteraction()">
+                        <input type="number" class="form-input" id="progestogenDose" value="10" min="0" max="500" step="0.05" onchange="updateProgestogenInteraction(false)">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Interval <span class="unit">h</span></label>
-                        <input type="number" class="form-input" id="progestogenInterval" value="24" step="1" onchange="updateProgestogenInteraction()">
+                        <input type="number" class="form-input" id="progestogenInterval" value="24" min="4" max="168" step="1" onchange="updateProgestogenInteraction(false)">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration <span class="unit">days</span></label>
+                        <input type="number" class="form-input" id="progestogenDays" value="14" min="1" max="365" step="1">
                     </div>
                 </div>
                 
-                <!-- Hill Equation Display -->
                 <div class="pg-equation-box">
-                    CL<sub>adj</sub> = CL × [1 + (I/K<sub>i</sub>)<sup>n</sup>]<sup>-1</sup>
+                    POPULATION PROJECTION · INTERNAL AUDITED MODEL
                 </div>
                 
                 <!-- Results Display -->
@@ -1105,6 +1115,45 @@
                             <span class="pg-result-value green" id="pgE2Effect">-</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="pg-gnrh-results" id="pgGnrhResults" style="display: none;">
+                    <div class="target-effect-metrics" aria-live="polite">
+                        <div class="target-effect-metric primary">
+                            <div class="label">ENDPOINT GnRH PULSE SUPPRESSION / 终点脉冲抑制</div>
+                            <div class="value" id="pgGnrhEffect">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">PEAK SUPPRESSION / 峰值</div>
+                            <div class="value" id="pgGnrhPeak">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">PR OCCUPANCY / PR 占有率</div>
+                            <div class="value" id="pgPrOccupancy">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">GnRH PULSE ACTIVITY / 脉冲活性</div>
+                            <div class="value" id="pgGnrhActivity">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">MODEL PLASMA CONC. / 模型血浆浓度</div>
+                            <div class="value" id="pgGnrhConcentration">—</div>
+                        </div>
+                    </div>
+                    <div class="target-effect-chart">
+                        <div class="target-effect-chart-title">PR / GnRH PULSE TIME COURSE</div>
+                        <div class="target-effect-chart-wrap">
+                            <canvas id="pgGnrhChart" role="img" aria-label="Progesterone receptor occupancy and GnRH pulse feedback over time"></canvas>
+                        </div>
+                        <div class="target-effect-legend" aria-hidden="true">
+                            <span style="--legend-color:#4ac4c4">GnRH ↓</span>
+                            <span style="--legend-color:#f6c857">PR OCC.</span>
+                            <span style="--legend-color:#ff6b5f">PULSE ACTIVITY</span>
+                        </div>
+                    </div>
+                    <div class="target-effect-note">计算的是孕酮/孕激素结合 PR 后、在 E2 预激参考条件下对 GnRH 脉冲发生器的延迟负反馈；不是直接 GnRH 受体竞争性拮抗率。</div>
+                    <div class="target-effect-domain" id="pgGnrhDomain">选择孕激素后载入 Kotlin 动力学核心…</div>
+                    <div class="target-effect-ref"><a id="pgGnrhReference" href="https://www.rcsb.org/structure/1A28" target="_blank" rel="noopener noreferrer">MODEL REFERENCE</a></div>
                 </div>
                 
                 <!-- Reference -->
@@ -1784,7 +1833,7 @@
         // 孕激素相互作用计算函数
         // Hill equation for enzyme inhibition
         // =====================================================
-        function updateProgestogenInteraction() {
+        function updateProgestogenInteraction(resetDose = false) {
             const select = document.getElementById('progestogenSelect');
             const doseInput = document.getElementById('progestogenDose');
             const intervalInput = document.getElementById('progestogenInterval');
@@ -1804,10 +1853,12 @@
             const pg = PROGESTOGEN_DB[pgKey];
             if (!pg) return;
             
-            // Show dose row
-            doseRow.style.display = 'flex';
-            doseInput.value = pg.defaultDose;
-            intervalInput.value = pg.defaultInterval;
+            // Show dose row; preserve user-entered dose/interval after selection.
+            doseRow.style.display = 'grid';
+            if (resetDose) {
+                doseInput.value = pg.defaultDose;
+                intervalInput.value = pg.defaultInterval;
+            }
             
             // Calculate steady-state concentration (ng/mL)
             const dose = parseFloat(doseInput.value) || pg.defaultDose;

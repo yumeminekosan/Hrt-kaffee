@@ -58,6 +58,7 @@ jobs:
           test -f _site/kinetics/hrt-kaffee-kinetics.js
           grep -q 'HRT<span>-KAFFEE</span>' _site/index.html
           grep -q 'id="fiveArModule"' _site/index.html
+          grep -q 'id="pgGnrhResults"' _site/index.html
           grep -q 'src="kinetics/hrt-kaffee-kinetics.js"' _site/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

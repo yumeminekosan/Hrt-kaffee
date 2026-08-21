@@ -27,7 +27,8 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 | Chain complex | Simplicial faces and boundary; stoichiometric two-term complex | Exact identity | `∂²=0`; exact left/right nullspaces | Interpret selected cycles/conservation laws physically |
 | Finasteride PK/PD | Saturable SRD5A2 binding, SRD5A1 inhibition and serum-DHT turnover | Identified population parameterization + numerical certificate | JVM RK4 step-halving; JVM/Wasm trajectory parity; 0–1 bounds | Re-identify for an individual; doses above 5 mg/day are repeated-dose extrapolations |
 | Dutasteride PK/PD | Dual SRD5A1/SRD5A2 competitive engagement, time-dependent enzyme inactivation and serum-DHT turnover | Regulatory/literature-anchored population parameterization + numerical certificate | 0.5 mg/day 1/2-week and 24-week calibration windows; RK4 step-halving; 0–1 bounds | Accessibility/inactivation parameters are population-effective, not direct structural constants or an individual fit |
-| Integrated UI | Finasteride/dutasteride dose/time inputs, endpoint metrics and three time curves inside the original Hrt-kaffee page | Presentation only | Kotlin/JVM↔Kotlin/JS trajectory parity; browser build; unchanged-page identity checks | UI is not an evidence source; the mathematical flow is intentionally hidden |
+| Progestogen PR/GnRH feedback | Oral PK, ligand–PR occupancy and delayed E2-primed GnRH pulse feedback; direct GnRH-receptor antagonism explicitly excluded | Structure/literature-anchored population projection + numerical certificate | P4 100 mg label Cmax window; RK4 step-halving; 0–1 bounds; exact full-flow network test | Synthetic progestogens are relative structure/PK extrapolations; pulse feedback is not individualized and depends on endocrine context |
+| Integrated UI | Finasteride/dutasteride and progestogen dose/time inputs, endpoint metrics and time curves inside the original Hrt-kaffee page | Presentation only | Kotlin/JVM↔Kotlin/JS trajectory parity; browser build; unchanged-page identity checks | UI is not an evidence source; the mathematical flow is intentionally hidden |
 
 ## Assumption policy
 
@@ -43,7 +44,9 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 
 The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. The finasteride
 path uses the published Suzuki et al. population PK/PD parameters; the dutasteride path uses regulatory
-PK anchors and population DHT time-course calibration. Both remain population parameters rather than an individual fit. No result may be described as a patient-specific estimate,
+PK anchors and population DHT time-course calibration. The P4 path uses label PK, the observed PR–P4
+structure and delayed human neuroendocrine feedback constraints; synthetic progestogens remain relative
+extrapolations. All remain population parameters rather than an individual fit. No result may be described as a patient-specific estimate,
 clinical efficacy guarantee, dose conversion, or safety recommendation.
 
 The default quantum panel evaluates only `λ_th=h/sqrt(2πmk_BT)`. It deliberately leaves the AR CTMC rates unchanged. A rate update requires a separate `ExactQuantumRateCalibration` whose source and named reaction multipliers are explicit.

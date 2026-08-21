@@ -5,7 +5,7 @@ This directory supplies the hidden mathematical core and the Kotlin browser engi
 - `rigor-core`: dependency-light Kotlin/JVM mathematics and domain contracts.
 - `composeApp`: an original tactical-terminal UI built with Compose Multiplatform.
 - `webApp`: the responsive Kotlin/Wasm finasteride input/result/curve interface deployed to GitHub Pages.
-- `embeddedEngine`: the Kotlin/JS controller integrated directly into the original page; it renders the finasteride/dutasteride inputs, metrics and curves without replacing the rest of Hrt-kaffee.
+- `embeddedEngine`: the Kotlin/JS controller integrated directly into the original page; it renders the finasteride/dutasteride and progestogen–PR/GnRH inputs, metrics and curves without replacing the rest of Hrt-kaffee.
 - `rigor-core/.../NuclearQuantumBinding.kt`: a hard boundary from thermal de Broglie scale to externally calibrated free-energy/rate corrections; no wavelength-to-binding shortcut.
 - `docs/FLOW_AUDIT.md`: arrow-by-arrow implementation audit and conceptual-question resolution.
 - `docs/RIGOR_MATRIX.md`: claim-by-claim status, assumptions, and falsification checks.
@@ -47,4 +47,4 @@ Every output carries one of these evidence classes:
 
 No `Double` trajectory is presented as a proof. This is research software, not medical advice.
 
-The complete CTMC → Kurtz/LDP/Doob/PDE/topology map remains in Kotlin and the audit documents. It is intentionally absent from the user interface, which exposes only regimen inputs, 5αR binding/inhibition outputs, serum-DHT results and time curves. Finasteride and dutasteride are modeled as upstream 5α-reductase inhibitors, never as direct AR competitors.
+The complete CTMC → Kurtz/LDP/Doob/PDE/topology map remains in Kotlin and the audit documents. It is intentionally absent from the user interface, which exposes only regimen inputs, target engagement, endocrine feedback outputs and time curves. Finasteride and dutasteride are modeled as upstream 5α-reductase inhibitors, never as direct AR competitors. Progestogens bind PR and drive a delayed, E2-primed GnRH pulse-generator feedback state; no direct GnRH-receptor antagonism is asserted.
