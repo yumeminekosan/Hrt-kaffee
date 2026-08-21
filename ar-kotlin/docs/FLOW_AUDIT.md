@@ -17,7 +17,7 @@ flowchart TD
     A --> J["空间晶格上的交互粒子系统"]
     J --> K["L,K→∞：水动力 PDE"]
     A --> L["链复形、守恒量与反应循环"]
-    A --> M["当前浏览器四反事实平衡投影<br/>静态约化，不冒充 CTMC 路径"]
+    A --> M["非那雄胺群体 PK/PD 投影<br/>前端仅显示输入、结果与曲线"]
 ```
 
 The quantum branch is deliberately one-way through `Q1`: no direct `Q --> A` edge exists.
@@ -30,6 +30,15 @@ Status vocabulary:
 - **model input open** — the algebra is implemented, but physical identification/calibration is deliberately not invented.
 
 ## Flowchart coverage
+
+`FinasterideMicroscopicNetwork` adds absorption/redistribution, elimination/reservoir return,
+`FIN + SRD5A2 ⇄ SRD5A2·NADP-DHF`, `FIN + SRD5A1 ⇄ SRD5A1·FIN`, and the two
+isoenzyme-specific `T ⇄ DHT` channels. `FinasterideRigorousPipeline` passes that single reaction
+table to the exact generator, density symbol and stoichiometric chain complex; the existing
+random-time-change, martingale, nonlinear-generator/Hamiltonian, Doob, metastability and spatial
+constructors consume those same generic objects. None of those names or derivations is rendered
+by `webApp`; the browser projection is restricted to regimen input, 5αR1/5αR2 outputs, serum-DHT
+suppression and the time curves.
 
 | Requested node or arrow | Status | Kotlin realization and check | Honest boundary |
 |---|---|---|---|

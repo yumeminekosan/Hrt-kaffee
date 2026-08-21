@@ -10,7 +10,7 @@
 - **参数计算**：计算 Cmax、Cmin、Tmax、AUC 等药代动力学参数
 - **多药物交互**：支持 CPA 等药物对 CYP3A4 酶抑制的模拟
 - **给药方案优化**：比较不同给药方案的效果
-- **AR 严谨计算实验室**：独立的外接 Kotlin/Compose 模块；主页只呈现用药与靶点效应，CTMC→Kurtz/LDP/Doob/PDE/链复形过程保留在实现、审计与详情页
+- **非那雄胺动力学实验室**：独立的外接 Kotlin/Compose 模块；使用者只看到剂量、时间、5αR 结合占有、DHT 抑制与曲线，CTMC→Kurtz/LDP/Doob/PDE/链复形过程仅保留在实现与审计文档
 - **核量子输入边界**：交互显示热德布罗意尺度；只有带来源的量子结合/势垒自由能修正才能进入精确 CTMC 跳率
 
 ## 文件说明
@@ -42,7 +42,7 @@ bun run dev
 open pkpd-simulator-v3.html
 ```
 
-### Kotlin AR 战术面板
+### Kotlin 非那雄胺 / AR 计算模块
 
 ```bash
 cd ar-kotlin
@@ -56,7 +56,7 @@ gradle :composeApp:run
 
 GitHub Pages: https://yumeminekosan.github.io/Hrt-kaffee/
 
-AR 模型详情: https://yumeminekosan.github.io/Hrt-kaffee/ar/
+非那雄胺动力学与曲线: https://yumeminekosan.github.io/Hrt-kaffee/ar/
 
 ## 参考文献
 

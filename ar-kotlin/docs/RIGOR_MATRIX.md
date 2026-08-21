@@ -25,7 +25,8 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 | Spatial IPS | Periodic lattice lift of the same local network with `D L²` hops | Exact generator construction | Reverse hop pairs; exact generator rows | Add interaction/Gibbs factors only when spatial physics requires them |
 | Spatial PDE | Same-network reaction drift plus conservative 1D finite-volume step | Conditional theorem + numerical certificate | Spatial/L²/K/replacement/tightness gates; CFL, positivity, conservation residual | Prove AR-specific replacement/local-equilibrium and tightness estimates |
 | Chain complex | Simplicial faces and boundary; stoichiometric two-term complex | Exact identity | `∂²=0`; exact left/right nullspaces | Interpret selected cycles/conservation laws physically |
-| UI | Original tactical terminal consuming `ArSuppressionResult` | Presentation only | Kotlin + Compose compiler build; semantic descriptions | UI is not an evidence source |
+| Finasteride PK/PD | Saturable SRD5A2 binding, SRD5A1 inhibition and serum-DHT turnover | Identified population parameterization + numerical certificate | JVM RK4 step-halving; JVM/Wasm trajectory parity; 0–1 bounds | Re-identify for an individual; doses above 5 mg/day are repeated-dose extrapolations |
+| UI | Finasteride dose/time inputs, endpoint metrics and three time curves | Presentation only | Kotlin + Compose/Wasm build; DOM fallback parity | UI is not an evidence source; the mathematical flow is intentionally hidden |
 
 ## Assumption policy
 
@@ -39,6 +40,9 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 
 ## Parameter policy
 
-The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. They exist to exercise the mechanism split and UI. No result from the defaults may be described as a patient estimate, clinical efficacy, dose conversion, or safety recommendation.
+The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. The finasteride
+path instead uses the published Suzuki et al. population PK/PD parameters, but they remain population
+parameters rather than an individual fit. No result may be described as a patient-specific estimate,
+clinical efficacy guarantee, dose conversion, or safety recommendation.
 
 The default quantum panel evaluates only `λ_th=h/sqrt(2πmk_BT)`. It deliberately leaves the AR CTMC rates unchanged. A rate update requires a separate `ExactQuantumRateCalibration` whose source and named reaction multipliers are explicit.

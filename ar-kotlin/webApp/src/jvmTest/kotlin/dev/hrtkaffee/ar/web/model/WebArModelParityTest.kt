@@ -4,6 +4,8 @@ import dev.hrtkaffee.ar.model.ArEquilibriumParameters as JvmParameters
 import dev.hrtkaffee.ar.model.ArIntervention as JvmIntervention
 import dev.hrtkaffee.ar.model.ArSuppressionModel as JvmModel
 import dev.hrtkaffee.ar.model.BasisPoints as JvmBasisPoints
+import dev.hrtkaffee.ar.model.FinasterideKineticModel as JvmFinasterideModel
+import dev.hrtkaffee.ar.model.FinasterideRegimen as JvmFinasterideRegimen
 import dev.hrtkaffee.ar.rigor.thermo.ThermalDeBroglie as JvmThermalDeBroglie
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,6 +46,27 @@ class WebArModelParityTest {
                 val web = WebThermalDeBroglie.evaluate(mass, temperature)
                 val jvm = JvmThermalDeBroglie.evaluate(mass, temperature)
                 assertEquals(jvm.wavelengthPicometres, web.wavelengthPicometres, 1e-12)
+            }
+        }
+    }
+
+    @Test
+    fun browserFinasterideProjectionMatchesJvmCoreAcrossDoseAndTimeGrid() {
+        val webModel = FinasterideKineticModel()
+        val jvmModel = JvmFinasterideModel()
+        val doses = listOf(0.0, 0.05, 0.2, 1.0, 5.0, 15.0)
+        val horizons = listOf(1, 7, 14, 42)
+
+        for (dose in doses) {
+            for (days in horizons) {
+                val web = webModel.simulate(FinasterideRegimen(dose, days))
+                val jvm = jvmModel.simulate(JvmFinasterideRegimen(dose, days))
+
+                assertEquals(jvm.curve.size, web.curve.size)
+                assertEquals(jvm.finalPoint.serumDhtFraction, web.finalPoint.serumDhtFraction, 1e-12)
+                assertEquals(jvm.finalPoint.type2OccupancyFraction, web.finalPoint.type2OccupancyFraction, 1e-12)
+                assertEquals(jvm.finalPoint.type1InhibitionFraction, web.finalPoint.type1InhibitionFraction, 1e-12)
+                assertEquals(jvm.peakDhtSuppressionFraction, web.peakDhtSuppressionFraction, 1e-12)
             }
         }
     }
