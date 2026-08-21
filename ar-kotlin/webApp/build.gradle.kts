@@ -46,6 +46,7 @@ kotlin {
             implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
             implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
+            implementation(compose.components.resources)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

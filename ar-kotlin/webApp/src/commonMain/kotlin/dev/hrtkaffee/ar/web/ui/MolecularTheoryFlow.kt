@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -146,7 +145,7 @@ internal fun MolecularTheoryFlowPanel(
             Text(
                 text = "PARALLEL LIFTS FROM NODE A",
                 color = FlowMuted,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalArFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 fontSize = 9.sp,
                 letterSpacing = 1.3.sp,
@@ -209,7 +208,7 @@ private fun FlowTitle() {
         Text(
             text = "00  FLOWCHART TD // AUDITED",
             color = FlowViolet,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontWeight = FontWeight.Bold,
             fontSize = 10.sp,
             letterSpacing = 1.5.sp,
@@ -287,8 +286,8 @@ private fun QuantumSlider(
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = FlowMuted, fontFamily = FontFamily.Monospace, fontSize = 9.sp)
-            Text("$value", color = FlowViolet, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            Text(label, color = FlowMuted, fontFamily = LocalArFontFamily.current, fontSize = 9.sp)
+            Text("$value", color = FlowViolet, fontFamily = LocalArFontFamily.current, fontWeight = FontWeight.Bold)
         }
         Slider(
             value = value.toFloat(),
@@ -314,15 +313,15 @@ private fun QuantumReadout(wavelengthPicometres: Double, modifier: Modifier) {
             .border(1.dp, FlowViolet.copy(alpha = 0.75f), CutCornerShape(topEnd = 15.dp, bottomStart = 10.dp))
             .padding(14.dp),
     ) {
-        Text("THERMAL λₜₕ", color = FlowMuted, fontFamily = FontFamily.Monospace, fontSize = 9.sp)
+        Text("THERMAL λₜₕ", color = FlowMuted, fontFamily = LocalArFontFamily.current, fontSize = 9.sp)
         Text(
             "${decimal(wavelengthPicometres, 1)} pm",
             color = FlowViolet,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontWeight = FontWeight.Black,
             fontSize = 24.sp,
         )
-        Text("h / √(2πmkBT)", color = FlowMuted, fontFamily = FontFamily.Monospace, fontSize = 9.sp)
+        Text("h / √(2πmkBT)", color = FlowMuted, fontFamily = LocalArFontFamily.current, fontSize = 9.sp)
     }
 }
 
@@ -367,7 +366,7 @@ private fun FlowLane(
         Text(
             title,
             color = FlowMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = LocalArFontFamily.current,
             fontWeight = FontWeight.Bold,
             fontSize = 8.sp,
             letterSpacing = 0.8.sp,
@@ -402,7 +401,7 @@ private fun FlowNodeCard(node: TheoryNode, modifier: Modifier = Modifier) {
             Text(
                 node.code,
                 color = Color(0xFF080B0F),
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalArFontFamily.current,
                 fontWeight = FontWeight.Black,
                 fontSize = 9.sp,
             )
@@ -430,7 +429,7 @@ private fun FlowNodeCard(node: TheoryNode, modifier: Modifier = Modifier) {
             Text(
                 statusLabel(node.status),
                 color = accent,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = LocalArFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 fontSize = 7.sp,
                 letterSpacing = 0.5.sp,
@@ -445,7 +444,7 @@ private fun FlowConnector(label: String) {
         text = label,
         modifier = Modifier.fillMaxWidth(),
         color = FlowViolet,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = LocalArFontFamily.current,
         fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -462,7 +461,7 @@ private fun QuantumBoundaryNotice() {
             .padding(12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        Text("Q!", color = FlowCoral, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black)
+        Text("Q!", color = FlowCoral, fontFamily = LocalArFontFamily.current, fontWeight = FontWeight.Black)
         Spacer(Modifier.width(9.dp))
         Column {
             Text(
@@ -506,9 +505,9 @@ private fun ReferenceCell(code: String, citation: String, locator: String, modif
             .border(1.dp, FlowGrid)
             .padding(8.dp),
     ) {
-        Text(code, color = FlowCyan, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 8.sp)
+        Text(code, color = FlowCyan, fontFamily = LocalArFontFamily.current, fontWeight = FontWeight.Bold, fontSize = 8.sp)
         Text(citation, color = FlowText, fontSize = 8.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(locator, color = FlowMuted, fontFamily = FontFamily.Monospace, fontSize = 7.sp)
+        Text(locator, color = FlowMuted, fontFamily = LocalArFontFamily.current, fontSize = 7.sp)
     }
 }
 
@@ -518,7 +517,7 @@ private fun FlowTag(text: String, color: Color) {
         text,
         color = color,
         modifier = Modifier.border(1.dp, color.copy(alpha = 0.7f)).padding(horizontal = 6.dp, vertical = 3.dp),
-        fontFamily = FontFamily.Monospace,
+        fontFamily = LocalArFontFamily.current,
         fontWeight = FontWeight.Bold,
         fontSize = 7.sp,
     )
