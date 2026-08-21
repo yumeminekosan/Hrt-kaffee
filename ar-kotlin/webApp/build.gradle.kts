@@ -1,8 +1,8 @@
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
+import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
+import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 
 plugins {
     kotlin("multiplatform")
@@ -10,8 +10,11 @@ plugins {
     id("org.jetbrains.compose")
 }
 
-project.plugins.withType<NodeJsPlugin> {
-    project.the<NodeJsEnvSpec>().download = false
+project.plugins.withType<WasmNodeJsPlugin> {
+    project.the<WasmNodeJsEnvSpec>().apply {
+        download.set(false)
+        downloadBaseUrl.set(null as String?)
+    }
 }
 
 @OptIn(ExperimentalWasmDsl::class)
