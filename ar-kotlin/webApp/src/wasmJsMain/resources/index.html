@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080b0f" />
+  <meta name="description" content="Hrt-kaffee Kotlin/Wasm androgen-receptor counterfactual operations panel." />
+  <title>Hrt-kaffee · AR Receptor Operations</title>
+  <style>
+    :root { color-scheme: dark; background: #080b0f; }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 78% 12%, rgba(84, 230, 224, .08), transparent 34rem),
+        #080b0f;
+      overscroll-behavior: none;
+    }
+    body { min-height: 100dvh; }
+    canvas { display: block; outline: none; }
+    #loading-shell {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #54e6e0;
+      font: 600 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: .18em;
+      background:
+        linear-gradient(rgba(40, 52, 61, .18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(40, 52, 61, .18) 1px, transparent 1px),
+        #080b0f;
+      background-size: 48px 48px;
+    }
+    #loading-shell::after {
+      content: "";
+      width: 6rem;
+      height: 1px;
+      margin-left: 1rem;
+      background: linear-gradient(90deg, #54e6e0, transparent);
+      animation: scan 1.1s ease-in-out infinite alternate;
+    }
+    @keyframes scan { to { transform: scaleX(.2); opacity: .35; } }
+  </style>
+</head>
+<body>
+  <div id="loading-shell">INITIALIZING KOTLIN/WASM NODE</div>
+  <script src="hrt-kaffee-ar.js"></script>
+</body>
+</html>

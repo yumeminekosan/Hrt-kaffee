@@ -2,6 +2,26 @@
 
 This audit maps every requested arrow to an executable Kotlin object, a machine check, and the analytical boundary that code must not conceal.
 
+```mermaid
+flowchart TD
+    Q["热德布罗意尺度 λth<br/>轻核、温度与离域诊断"] --> Q1["PIMD / 量子化学 / 实验校准<br/>ΔΔGbind、ΔΔG‡、隧穿与零点能"]
+    Q1 --> A["离散分子数 CTMC<br/>自由能与局部详细平衡"]
+    A --> B["生成元、随机时间变换、跳鞅"]
+    B --> C["Ω→∞：Kurtz 流体极限"]
+    B --> D["指数非线性生成元"]
+    D --> E["Hamiltonian、Legendre–Fenchel、HJ"]
+    E --> F["准势、最小作用路径、亚稳态"]
+    B --> G["路径可观测量的倾斜算子"]
+    G --> H["广义 Doob 变换"]
+    H --> I["可精确 Gillespie 的驱动过程"]
+    A --> J["空间晶格上的交互粒子系统"]
+    J --> K["L,K→∞：水动力 PDE"]
+    A --> L["链复形、守恒量与反应循环"]
+    A --> M["当前浏览器四反事实平衡投影<br/>静态约化，不冒充 CTMC 路径"]
+```
+
+The quantum branch is deliberately one-way through `Q1`: no direct `Q --> A` edge exists.
+
 Status vocabulary:
 
 - **implemented** — a typed construction and a test exist;
@@ -13,6 +33,7 @@ Status vocabulary:
 
 | Requested node or arrow | Status | Kotlin realization and check | Honest boundary |
 |---|---|---|---|
+| Thermal de Broglie scale → quantum binding calibration → CTMC | implemented boundary; model input open | `ThermalDeBroglie`, `QuantumBindingBridge`, and `ExactQuantumRateCalibration`; inverse-square-root, rate-ratio, provenance, and named-reaction tests | `λ_th` alone never determines `ΔG_bind`, `ΔG‡`, or a rate multiplier; those require an audited path-integral/quantum-chemistry or experimental input |
 | Discrete molecule-count CTMC | implemented | `ReactionNetwork`, falling-factorial propensities, `ExactGenerator`; exact sign and row-sum checks | The selected species/state space is a modelling choice |
 | Free energy and local detailed balance | implemented; model input open | `ExactActivity`, `FormalFreeEnergy`, `LocalDetailedBalance`; exact rational rate-ratio audit | AR state free energies, activity coefficients, and reservoir driving factors require physical identification |
 | CTMC → generator, random time change, jump martingale | implemented | `ExactGenerator`, reaction-labelled `ReactionNetworkGillespieSimulator`, `RandomTimeChange.stateEquation`, `DynkinMartingale`; integer state-clock identity and exact carré-du-champ bound | Infinite-state/infinite-horizon extensions need localization, Lyapunov non-explosion and uniform-integrability arguments |
@@ -42,6 +63,7 @@ Status vocabulary:
 | Should an interacting particle system always be introduced? | No. It is an optional spatial lift. Use it for spatial correlation, crowding, phase separation, or short-range effects; otherwise retain the well-mixed CTMC. |
 | How is metastability treated? | The preferred route is sample-path action and quasipotential, with scale-separation gates. Langevin diffusion is not used as the proof; it may only be a later cross-check. |
 | Must the system be Bose/Fermi or admit a virial expansion? | No. The core uses activities, formal free-energy weights and local detailed balance. It makes no quantum ideal-gas or virial-expansion assumption. A stronger correlated model belongs in an explicitly declared lattice Gibbs/IPS extension. |
+| Can a thermal de Broglie wavelength be used as a direct molecular-binding multiplier? | No. It is a diagnostic length scale. Nuclear quantum effects enter the CTMC only after a system-specific calculation identifies binding/activation free-energy shifts or rate corrections; the exact generator then accepts only explicit rational multipliers with provenance. |
 | Do Doi–Peliti “bosonic” operators imply bosonic molecules? | No. They would only be occupation-number bookkeeping. This implementation has no Doi–Peliti dependency at all. |
 | Is Kotlin the i-th face of a singular chain group? | No. Kotlin implements `face(i)`, chains, boundaries and exact `∂²=0`; it is not itself a mathematical chain group. |
 | Can numerical code prove the limit theorem? | No. `EvidenceKind` separates exact identity, conditional theorem, numerical certificate, Monte Carlo estimate and illustrative parameterization. Failed analytical assumptions block theorem construction. |
@@ -54,5 +76,6 @@ The software flow is present, but the following are intentionally **not** claime
 2. a proved AR-specific sample-path LDP, coercive quasipotential, or global minimum-action path;
 3. a proved AR-specific replacement lemma/tightness theorem for the spatial lattice;
 4. a clinical efficacy, dose-conversion, safety, or “total blockade percentage” result.
+5. AR-specific nuclear-quantum binding or activation corrections from PIMD, instanton/quantum-rate theory, quantum chemistry, or isotope-calibrated experiment.
 
 Those are missing scientific inputs/proofs, not gaps that a successful unit test is allowed to erase.

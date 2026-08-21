@@ -131,7 +131,35 @@ R(y,x) = 1/R(x,y).
 
 Activities are represented as `a/a°=γc/c°`, so the dimensionless chemical-potential increment is the formal logarithm `log(a/a°)`. No ideal Bose/Fermi gas, equation of state, virial expansion, or Doi–Peliti interpretation is assumed. Physical values of `F`, `γ`, and the reservoir factors are inputs requiring identification; the exact audit does not invent them.
 
-## 7. Exponential generator, action, and quasipotential
+## 7. Nuclear-quantum input is upstream of the CTMC
+
+For a selected nuclear mass `m` and temperature `T`, the UI evaluates the thermal de Broglie convention
+
+```text
+λth = h / sqrt(2π m kB T).
+```
+
+This is a diagnostic length scale, not a binding free energy. The code has no map `λth → binding percentage`. A system-specific path-integral/quantum-chemistry or experimentally identified calculation must separately supply
+
+```text
+ΔΔGbind = ΔGbind,quantum − ΔGbind,classical,
+ΔΔG‡    = ΔG‡quantum − ΔG‡classical.
+```
+
+Only then does `QuantumBindingBridge` expose the declared projection
+
+```text
+Kquantum / Kclassical             = exp(−ΔΔGbind / RT),
+kforward,quantum / kforward,classical = exp(−ΔΔG‡ / RT),
+kreverse,quantum / kreverse,classical =
+    (kforward,quantum / kforward,classical) / (Kquantum / Kclassical).
+```
+
+The last relation is the consistency condition `K=kforward/kreverse`. Applying those floating results to the exact generator is a separate, visible rationalization/calibration step. It requires named reaction IDs and provenance. This separation matters because zero-point motion, tunnelling, and competing low/high-frequency modes can strengthen or weaken binding; `λth` does not determine the sign.
+
+Primary anchors: Fang et al., *J. Phys. Chem. Lett.* 7 (2016), DOI `10.1021/acs.jpclett.6b00777`; Raugei & Klein, *JACS* 125 (2003), DOI `10.1021/ja0351995`. Physical constants use the 2022 CODATA values exposed by NIST.
+
+## 8. Exponential generator, action, and quasipotential
 
 For the linear exponential test `f_p(x)=p·x`, the finite nonlinear generator is
 
@@ -149,7 +177,7 @@ I_T[φ] = ∫₀ᵀ L(φ(t), φ̇(t)) dt.
 
 The quasipotential `V(a,b)` is the infimum of this action over both paths and travel times. `FixedTimeMinimumActionSolver` returns only a residual-bearing, fixed-mesh stationary candidate; sample-path LDP, coercivity, global minimization, and metastable scale separation remain separate analytical gates.
 
-## 8. Spatial and chain-complex layers
+## 9. Spatial and chain-complex layers
 
 The well-mixed `N→∞` limit and a hydrodynamic limit are different constructions. `PeriodicSpatialLattice` first creates a microscopic lattice generator by copying the same local reaction table to each site and adding bidirectional hopping at rate `D L²`. Only after spatial-generator, `L,K` scaling, local-equilibrium/replacement, and tightness witnesses are supplied may the hydrodynamic theorem object be constructed.
 

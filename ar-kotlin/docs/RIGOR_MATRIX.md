@@ -7,6 +7,7 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 | AR mechanism split | Four exact counterfactual signals; Shapley contributions; non-additivity | Exact identity inside declared reduced model | Exact rational equalities and switch-off tests | Fit/identify biological parameters before any empirical claim |
 | Microscopic dynamics | Finite reaction network and exact row generator `Q` | Exact identity | Reachable-state enumeration; signs; exact row sums | State-space choice remains a modelling decision |
 | Free energy / activity | Formal Gibbs weights; exact `γc/c°`; local detailed-balance edge audit | Exact identity for declared inputs | Exact rate, weight, and reciprocal reservoir ratios | Identify physical AR free energies, activity coefficients, and reservoirs |
+| Nuclear-quantum boundary | Thermal `λ_th`; external `ΔΔG_bind`/`ΔΔG‡` projection; exact named rate calibration | Numerical scale + illustrative/model input | `m⁻¹/²T⁻¹/²` scaling; forward/reverse ratio consistency; provenance; unknown reaction rejection | Supply system-specific PIMD/quantum-rate or experimental correction and justify Markovian coarse-graining |
 | Random time change | Reaction-labelled Gillespie path; clock/state identity; compensated counts | Exact integer identity + stochastic sample | `X(t)−X(0)=ΣνN_r(t)` exactly; nonnegative brackets | Infinite-state extensions need Lyapunov non-explosion/localization |
 | Martingale | Dynkin terminal value and exact carré-du-champ bound | Exact identity + Monte Carlo estimate | Exact `Qf`; seeded 95% estimate test | Infinite-horizon convergence needs its own uniform-integrability hypothesis |
 | Thermodynamics | Exact stationary law; detailed-balance audit; formal cycle affinity; numerical entropy production | Exact identity + numerical certificate | `πQ=0`, `Σπ=1`, pair-flow equality, log roundoff diagnostic | Local detailed-balance interpretation needs declared reservoirs/energies |
@@ -39,3 +40,5 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 ## Parameter policy
 
 The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. They exist to exercise the mechanism split and UI. No result from the defaults may be described as a patient estimate, clinical efficacy, dose conversion, or safety recommendation.
+
+The default quantum panel evaluates only `λ_th=h/sqrt(2πmk_BT)`. It deliberately leaves the AR CTMC rates unchanged. A rate update requires a separate `ExactQuantumRateCalibration` whose source and named reaction multipliers are explicit.
