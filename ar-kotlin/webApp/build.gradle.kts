@@ -10,6 +10,7 @@ plugins {
     id("org.jetbrains.compose")
 }
 
+@OptIn(ExperimentalWasmDsl::class)
 plugins.withType<BinaryenPlugin> {
     the<BinaryenEnvSpec>().downloadBaseUrl.set(null as String?)
 }

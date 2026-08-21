@@ -1,5 +1,6 @@
 package dev.hrtkaffee.ar.web.model
 
+import kotlin.jvm.JvmInline
 import kotlin.math.abs
 
 /**
