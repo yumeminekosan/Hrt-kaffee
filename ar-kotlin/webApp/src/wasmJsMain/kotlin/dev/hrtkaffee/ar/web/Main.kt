@@ -7,7 +7,7 @@ import kotlin.js.ExperimentalWasmJsInterop
 import kotlinx.browser.document
 import org.w3c.dom.HTMLCanvasElement
 
-@OptIn(ExperimentalComposeUiApi::class, ExperimentalWasmJsInterop::class)
+@OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     val body = document.body ?: return
     if (!supportsWebGl2()) {
@@ -21,5 +21,6 @@ fun main() {
     }
 }
 
+@OptIn(ExperimentalWasmJsInterop::class)
 private fun supportsWebGl2(): Boolean =
     (document.createElement("canvas") as HTMLCanvasElement).getContext("webgl2") != null
