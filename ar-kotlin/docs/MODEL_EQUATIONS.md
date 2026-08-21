@@ -108,14 +108,23 @@ dF/dt  = kfb(B-F)
 SGnRH   = smax F,                        AGnRH = 1-SGnRH.
 ```
 
-For oral micronized P4, `ka=0.50 h⁻¹`, `ke=0.70 h⁻¹`, `V=50 L` and apparent `Fa=0.028` reproduce the
-label mean `Cmax=17.3 ng/mL` after 100 mg. The label reports strong between-person dispersion and does
-not establish an individual response. The feedback half-time is declared as `36 h` and `smax=0.85`;
-this prevents instantaneous PR occupancy from being presented as instantaneous GnRH suppression.
+For oral micronized P4, `ka=2.50 h⁻¹`, `ke=ln(2)/16.8 h⁻¹`, `V=50 L` and an effective systemic
+scale `Fa=0.00578` reproduce the label mean `Cmax=17.3 ng/mL` after five daily 100 mg doses while
+retaining the reported terminal phase. `Fa` here is a reduced-model calibration scale, not a claim about
+an individual's absorbed fraction. The label reports strong between-person dispersion and does not
+establish an individual response. The feedback half-time is declared as `36 h` and the conservative
+population ceiling is `smax=0.55`; this prevents instantaneous PR occupancy from being presented as
+instantaneous or near-complete GnRH suppression.
 Human pulse studies support PR-mediated gonadotropin feedback but show context dependence: E2/P4
 exposure over days suppresses LH pulse frequency, while a single P4 exposure in E2-pretreated women
 did not reduce pulse frequency within 12 hours. The UI therefore labels the feedback curve as an
 E2-primed population projection.
+
+The page also accepts a selected absolute `SGnRH` threshold and evolves the same state after one final
+scheduled dose with no further doses. It reports the final downward threshold crossing and, if supplied,
+maps that model window to the chosen last-dose date. This is a PR–GnRH signal coverage window only: it
+does not date loss of subjective effects, body changes, breast tissue, estradiol exposure, identity, or
+any other individual outcome.
 
 `ProgestogenGnRHMicroscopicNetwork` contains reversible absorption, elimination, ligand–PR binding,
 and pulse-generator ready/inhibited channels. That one table feeds the exact generator, random-time-

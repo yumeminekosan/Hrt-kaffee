@@ -42,4 +42,35 @@ class EmbeddedProgestogenGnRHParityTest {
             }
         }
     }
+
+    @Test
+    fun browserCoverageWindowMatchesAuditedJvmModel() {
+        val model = ProgestogenGnRHModel()
+        EmbeddedProgestogen.entries.forEach { embeddedLigand ->
+            val auditedLigand = ProgestogenLigand.fromWireId(embeddedLigand.wireId)
+            val embedded = EmbeddedProgestogenGnRHModel.estimateCoverageAfterLastDose(
+                embeddedLigand,
+                embeddedLigand.defaultDoseMg,
+                24.0,
+                14,
+                0.10,
+            )
+            val audited = model.estimateCoverageAfterLastDose(
+                ProgestogenGnRHRegimen(auditedLigand, embeddedLigand.defaultDoseMg, 24.0, 14),
+                0.10,
+            )
+            assertEquals(audited.reachesThreshold, embedded.reachesThreshold)
+            assertEquals(
+                audited.peakSuppressionAfterLastDoseFraction,
+                embedded.peakSuppressionAfterLastDoseFraction,
+                1e-12,
+            )
+            assertEquals(
+                audited.timeUntilFinalBelowThresholdHours,
+                embedded.timeUntilFinalBelowThresholdHours,
+                1e-12,
+            )
+            assertEquals(audited.searchHorizonHours, embedded.searchHorizonHours, 1e-12)
+        }
+    }
 }
