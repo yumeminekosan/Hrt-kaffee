@@ -427,6 +427,23 @@
 
         footer { padding: 0.75rem 0; background: var(--bg-panel); border-top: 1px solid var(--border-dark); text-align: center; }
         footer p { color: var(--text-dim); font-size: 0.65rem; letter-spacing: 0.02em; }
+        footer .detail-link { margin-top: 0.35rem; }
+        footer .detail-link a { color: var(--accent-cyan); text-decoration: none; letter-spacing: 0.08em; }
+        footer .detail-link a:hover { color: var(--accent-gold); }
+
+        .target-effect-panel { border-color: rgba(74, 196, 196, 0.32); }
+        .target-effect-readout {
+            margin-top: 0.7rem;
+            padding: 0.85rem;
+            border: 1px solid rgba(74, 196, 196, 0.28);
+            background: linear-gradient(135deg, rgba(74, 196, 196, 0.1), rgba(10, 12, 16, 0.72));
+        }
+        .target-effect-label { color: var(--text-dim); font-size: 0.6rem; letter-spacing: 0.09em; }
+        .target-effect-value { margin-top: 0.15rem; color: var(--accent-cyan); font-size: 1.35rem; font-weight: 600; }
+        .target-effect-note { margin-top: 0.35rem; color: var(--text-sub); font-size: 0.62rem; line-height: 1.5; }
+        .target-effect-domain { margin-top: 0.45rem; color: var(--accent-orange); font-size: 0.58rem; letter-spacing: 0.04em; }
+        .target-effect-ref { margin-top: 0.45rem; font-size: 0.58rem; }
+        .target-effect-ref a { color: var(--accent-gold-dark); text-decoration: none; }
 
         /* ============================================
            PROGESTOGEN MODULE - RHODES ISLAND TECH STYLE
@@ -689,6 +706,32 @@
                         <span class="name">TEST En</span>
                         <span class="desc">Testosterone Enanthate 100mg/7d</span>
                     </button>
+                </div>
+            </div>
+
+            <div class="panel target-effect-panel">
+                <div class="panel-header">
+                    <span class="panel-title">TARGET EFFECT / 靶点效应</span>
+                    <span class="panel-badge">EMPIRICAL</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="targetDrugSelect">药物</label>
+                    <select class="form-select" id="targetDrugSelect">
+                        <option value="finasteride">Finasteride / 非那雄胺（口服）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="targetDoseInput">每日剂量 <span class="unit">mg/day</span></label>
+                    <input type="number" class="form-input" id="targetDoseInput" value="15" min="0" step="0.05">
+                </div>
+                <div class="target-effect-readout" aria-live="polite">
+                    <div class="target-effect-label">SERUM DHT SUPPRESSION / 血清 DHT 下降</div>
+                    <div class="target-effect-value" id="targetEffectValue">~72.2%</div>
+                    <div class="target-effect-note">这是 5α-还原酶→DHT 的上游效应，不是直接 AR 受体拮抗率。</div>
+                    <div class="target-effect-domain" id="targetEffectDomain">实测域外：采用 5 mg/day 终点平台值，不推断额外收益。</div>
+                    <div class="target-effect-ref">
+                        <a href="https://pubmed.ncbi.nlm.nih.gov/10495374/" target="_blank" rel="noopener noreferrer">PMID 10495374 · 42-day dose-response</a>
+                    </div>
                 </div>
             </div>
 
@@ -1191,6 +1234,7 @@
 
     <footer>
         <p data-i18n="footer.disclaimer">For research only. Consult physician for treatment.</p>
+        <p class="detail-link"><a href="ar/">AR / CTMC MODEL DETAILS →</a></p>
     </footer>
 
     <script>
@@ -1259,6 +1303,65 @@
                 'footer.disclaimer': 'Kun til forskning. Konsulter læge.'
             }
         };
+
+        // Front-facing target-effect projection. The finite empirical table is
+        // deliberately separate from the external AR/CTMC module: finasteride
+        // suppresses DHT production upstream and is not a direct AR antagonist.
+        const FINASTERIDE_SERUM_DHT_POINTS = Object.freeze([
+            { dose: 0.05, suppression: 49.5 },
+            { dose: 0.2, suppression: 68.6 },
+            { dose: 1.0, suppression: 71.4 },
+            { dose: 5.0, suppression: 72.2 }
+        ]);
+
+        function estimateFinasterideSerumDhtSuppression(doseMgPerDay) {
+            const dose = Number.isFinite(doseMgPerDay) ? Math.max(0, doseMgPerDay) : 0;
+            if (dose === 0) return { suppression: 0, domain: 'zero' };
+
+            const first = FINASTERIDE_SERUM_DHT_POINTS[0];
+            const last = FINASTERIDE_SERUM_DHT_POINTS[FINASTERIDE_SERUM_DHT_POINTS.length - 1];
+            if (dose < first.dose) {
+                return {
+                    suppression: first.suppression * dose / first.dose,
+                    domain: 'below'
+                };
+            }
+            if (dose > last.dose) {
+                return { suppression: last.suppression, domain: 'above' };
+            }
+
+            for (let index = 1; index < FINASTERIDE_SERUM_DHT_POINTS.length; index++) {
+                const left = FINASTERIDE_SERUM_DHT_POINTS[index - 1];
+                const right = FINASTERIDE_SERUM_DHT_POINTS[index];
+                if (dose <= right.dose) {
+                    const fraction = (Math.log(dose) - Math.log(left.dose)) /
+                        (Math.log(right.dose) - Math.log(left.dose));
+                    return {
+                        suppression: left.suppression + fraction * (right.suppression - left.suppression),
+                        domain: 'measured'
+                    };
+                }
+            }
+
+            return { suppression: last.suppression, domain: 'measured' };
+        }
+
+        function updateTargetEffect() {
+            const input = document.getElementById('targetDoseInput');
+            const value = document.getElementById('targetEffectValue');
+            const domain = document.getElementById('targetEffectDomain');
+            if (!input || !value || !domain) return;
+
+            const estimate = estimateFinasterideSerumDhtSuppression(Number(input.value));
+            value.textContent = `~${estimate.suppression.toFixed(1)}%`;
+            const messages = {
+                zero: '0 mg/day：未施加药物效应。',
+                below: '低于 0.05 mg/day 实测范围：仅作零点到首个观测点的插值。',
+                measured: '位于 0.05–5 mg/day、42 天研究剂量范围内；按对数剂量插值。',
+                above: '实测域外：采用 5 mg/day 终点平台值，不推断额外收益。'
+            };
+            domain.textContent = messages[estimate.domain];
+        }
 
         // ============================================
         // Literature-Calibrated Drug Database
@@ -2960,6 +3063,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             sim = new Simulator();
             updateDrugParams();
+            updateTargetEffect();
+            document.getElementById('targetDoseInput')?.addEventListener('input', updateTargetEffect);
             
             // Model selector event handlers
             document.querySelectorAll('#sdeModelSelector .model-chip').forEach(chip => {
