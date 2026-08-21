@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,6 +8,7 @@ plugins {
     id("org.jetbrains.compose")
 }
 
+@OptIn(ExperimentalWasmDsl::class)
 kotlin {
     jvmToolchain(17)
 
@@ -19,7 +21,6 @@ kotlin {
     }
 
     wasmJs {
-        moduleName = "hrtKaffeeAr"
         browser {
             commonWebpackConfig {
                 outputFileName = "hrt-kaffee-ar.js"
@@ -34,10 +35,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
+            implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
+            implementation("org.jetbrains.compose.foundation:foundation:1.11.1")
+            implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
+            implementation("org.jetbrains.compose.ui:ui:1.11.1")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
