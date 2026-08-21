@@ -5,10 +5,12 @@ import dev.hrtkaffee.ar.rigor.markov.PopulationState
 import dev.hrtkaffee.ar.rigor.markov.Reaction
 import dev.hrtkaffee.ar.rigor.markov.ReactionNetwork
 import dev.hrtkaffee.ar.rigor.markov.Species
+import dev.hrtkaffee.ar.rigor.thermo.ExactQuantumRateCalibration
 
 data class ArMicroscopicSystem(
     val network: ReactionNetwork,
     val initialState: PopulationState,
+    val quantumRateCalibration: ExactQuantumRateCalibration?,
 )
 
 /** The same intervention controls used by the panel parameterize a finite chemical master equation. */
@@ -22,7 +24,10 @@ object ArMicroscopicNetwork {
     private const val ANTAGONIST_AR = 6
     private const val SPECIES_COUNT = 7
 
-    fun create(intervention: ArIntervention): ArMicroscopicSystem {
+    fun create(
+        intervention: ArIntervention,
+        quantumRateCalibration: ExactQuantumRateCalibration? = null,
+    ): ArMicroscopicSystem {
         val residualFiveAlphaActivity =
             Rational.ONE - intervention.fiveAlphaReductaseInhibition.asFraction()
         val antagonistMolecules =
@@ -38,7 +43,7 @@ object ArMicroscopicNetwork {
             Species("A_AR", "competitor-bound AR"),
         )
 
-        val reactions = listOf(
+        val uncalibratedReactions = listOf(
             reaction("t_bind", "T + AR → T·AR", terms(T to 1, AR to 1), terms(T_AR to 1), Rational.of(1, 4), "t_unbind"),
             reaction("t_unbind", "T·AR → T + AR", terms(T_AR to 1), terms(T to 1, AR to 1), Rational.of(1, 2), "t_bind"),
             reaction("dht_bind", "DHT + AR → DHT·AR", terms(DHT to 1, AR to 1), terms(DHT_AR to 1), Rational.ONE, "dht_unbind"),
@@ -55,10 +60,12 @@ object ArMicroscopicNetwork {
             ),
             reaction("five_ar_reverse", "DHT → T reference return", terms(DHT to 1), terms(T to 1), Rational.ONE, "five_ar_forward"),
         )
+        val reactions = quantumRateCalibration?.applyTo(uncalibratedReactions) ?: uncalibratedReactions
 
         return ArMicroscopicSystem(
             network = ReactionNetwork(species, reactions),
             initialState = PopulationState(listOf(4, 2, 3, 0, 0, antagonistMolecules, 0)),
+            quantumRateCalibration = quantumRateCalibration,
         )
     }
 

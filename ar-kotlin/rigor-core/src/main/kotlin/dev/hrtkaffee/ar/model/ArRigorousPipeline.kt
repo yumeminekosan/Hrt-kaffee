@@ -12,6 +12,7 @@ import dev.hrtkaffee.ar.rigor.thermo.LocalDetailedBalanceReport
 import dev.hrtkaffee.ar.rigor.Evidence
 import dev.hrtkaffee.ar.rigor.exact.Rational
 import dev.hrtkaffee.ar.rigor.topology.StoichiometricChainComplex
+import dev.hrtkaffee.ar.rigor.thermo.ExactQuantumRateCalibration
 
 data class ArRigorousArtifacts(
     val intervention: ArIntervention,
@@ -23,6 +24,7 @@ data class ArRigorousArtifacts(
     val densityLimitSymbol: DensityDependentModel,
     val chainComplex: StoichiometricChainComplex,
     val panelResult: ArSuppressionResult,
+    val quantumRateCalibration: ExactQuantumRateCalibration?,
 ) {
     fun auditLocalDetailedBalance(
         stateFreeEnergies: List<FormalFreeEnergy>,
@@ -41,9 +43,10 @@ object ArRigorousPipeline {
         systemSize: Int = 1,
         maximumStates: Int = 20_000,
         equilibriumParameters: ArEquilibriumParameters = ArEquilibriumParameters.illustrative(),
+        quantumRateCalibration: ExactQuantumRateCalibration? = null,
     ): ArRigorousArtifacts {
         require(systemSize > 0)
-        val microscopic = ArMicroscopicNetwork.create(intervention)
+        val microscopic = ArMicroscopicNetwork.create(intervention, quantumRateCalibration)
         val scaledNetwork = DensityScaledReactionFamily.networkAtSize(microscopic.network, systemSize)
         val scaledInitial = DensityScaledReactionFamily.scaleInitialState(microscopic.initialState, systemSize)
         return ArRigorousArtifacts(
@@ -60,6 +63,7 @@ object ArRigorousPipeline {
             densityLimitSymbol = ReactionNetworkLimit.from(microscopic.network),
             chainComplex = StoichiometricChainComplex.from(microscopic.network),
             panelResult = ArSuppressionModel(equilibriumParameters).evaluate(intervention),
+            quantumRateCalibration = microscopic.quantumRateCalibration,
         )
     }
 }

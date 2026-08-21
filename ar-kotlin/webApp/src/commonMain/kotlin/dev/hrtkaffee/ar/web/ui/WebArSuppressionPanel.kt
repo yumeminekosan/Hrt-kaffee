@@ -117,6 +117,7 @@ fun ArSuppressionPanel(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             TacticalHeader(compact)
+            MolecularTheoryFlowPanel(wide = wide, compact = compact)
             PresetStrip(
                 directBasisPoints = directBasisPoints,
                 upstreamBasisPoints = upstreamBasisPoints,
