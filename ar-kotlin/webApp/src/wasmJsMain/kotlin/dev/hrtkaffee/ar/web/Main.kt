@@ -3,10 +3,11 @@ package dev.hrtkaffee.ar.web
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import dev.hrtkaffee.ar.web.ui.ArSuppressionApp
+import kotlin.js.ExperimentalWasmJsInterop
 import kotlinx.browser.document
 import org.w3c.dom.HTMLCanvasElement
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalWasmJsInterop::class)
 fun main() {
     val body = document.body ?: return
     if (!supportsWebGl2()) {
