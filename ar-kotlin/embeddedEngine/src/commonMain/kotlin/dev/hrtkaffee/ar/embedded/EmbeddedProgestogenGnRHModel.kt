@@ -32,7 +32,9 @@ data class EmbeddedProgestogenParameters(
     val apparentPrHalfOccupancyNm: Double,
     val associationRatePerNmPerHour: Double = 0.005,
     val feedbackRelaxationPerHour: Double = ln(2.0) / 36.0,
-    val maximumPulseSuppressionFraction: Double = 0.85,
+    // The human pulse data support a delayed population feedback signal, but
+    // not an 80%+ deterministic suppression claim for this browser model.
+    val maximumPulseSuppressionFraction: Double = 0.55,
 ) {
     val dissociationRatePerHour: Double
         get() = apparentPrHalfOccupancyNm * associationRatePerNmPerHour
@@ -51,7 +53,16 @@ data class EmbeddedProgestogenParameters(
                 EmbeddedProgestogen.NORETHISTERONE ->
                     EmbeddedProgestogenParameters(298.42, 0.64, 1.20, ln(2.0) / 8.0, 80.0, 14.32)
                 EmbeddedProgestogen.PROGESTERONE ->
-                    EmbeddedProgestogenParameters(314.47, 0.028, 0.50, 0.70, 50.0, 9.01)
+                    // Calibrated against the labelled multiple-dose Cmax (100 mg/day)
+                    // while retaining the oral terminal phase reported for micronised P4.
+                    EmbeddedProgestogenParameters(
+                        314.47,
+                        0.00578,
+                        2.50,
+                        ln(2.0) / 16.8,
+                        50.0,
+                        9.01,
+                    )
             }
     }
 }
@@ -79,6 +90,19 @@ data class EmbeddedProgestogenProjection(
     val boundaryMessage: String,
     val referenceLabel: String,
     val referenceUrl: String,
+)
+
+/**
+ * A post-last-dose window for the same population PR→GnRH feedback state.
+ * `timeUntilFinalBelowThresholdHours` is intentionally a model threshold,
+ * not a prediction of a person's felt effects or physical changes.
+ */
+data class EmbeddedProgestogenCoverageEstimate(
+    val thresholdGnRHPulseSuppressionFraction: Double,
+    val peakSuppressionAfterLastDoseFraction: Double,
+    val reachesThreshold: Boolean,
+    val timeUntilFinalBelowThresholdHours: Double,
+    val searchHorizonHours: Double,
 )
 
 /** Browser projection of the audited ligand–PR→GnRH feedback equations. */
@@ -182,6 +206,84 @@ object EmbeddedProgestogenGnRHModel {
         )
     }
 
+    /**
+     * Starts from the regimen state at the end of the selected observation
+     * history, gives one final scheduled dose at t=0, then follows the model
+     * without more doses until the feedback signal has decayed below a chosen
+     * absolute GnRH-pulse-suppression threshold.
+     */
+    fun estimateCoverageAfterLastDose(
+        ligand: EmbeddedProgestogen,
+        doseMg: Double,
+        intervalHours: Double,
+        historyDays: Int,
+        thresholdGnRHPulseSuppressionFraction: Double,
+        integrationStepHours: Double = 0.05,
+    ): EmbeddedProgestogenCoverageEstimate {
+        require(doseMg in 0.0..500.0)
+        require(intervalHours in 4.0..168.0)
+        require(historyDays in 1..365)
+        require(thresholdGnRHPulseSuppressionFraction in 0.01..0.80)
+        require(integrationStepHours > 0.0 && integrationStepHours <= 0.1)
+
+        val parameters = EmbeddedProgestogenParameters.forLigand(ligand)
+        val doseNmole = doseMg * 1_000_000.0 / parameters.molecularWeightGramsPerMole
+        val historyDuration = historyDays * 24.0
+        var historyState = State(0.0, 0.0, 0.0, 0.0)
+        var historyTime = 0.0
+        var nextDoseTime = 0.0
+
+        while (historyTime < historyDuration - 1e-9) {
+            if (historyTime + 1e-9 >= nextDoseTime && nextDoseTime < historyDuration - 1e-9) {
+                historyState = historyState.copy(gutAmountNmole = historyState.gutAmountNmole + doseNmole)
+                nextDoseTime += intervalHours
+            }
+            val step = minOf(integrationStepHours, historyDuration - historyTime)
+            historyState = rk4(historyState, step, parameters)
+            historyTime = minOf(historyDuration, historyTime + step)
+        }
+
+        // The selected time marks the final administered dose, so no further
+        // dosing is scheduled during the washout projection.
+        var state = historyState.copy(gutAmountNmole = historyState.gutAmountNmole + doseNmole)
+        val horizon = coverageSearchHorizonHours(parameters)
+        var time = 0.0
+        var previousSuppression = suppression(state, parameters)
+        var peakSuppression = previousSuppression
+        var reachesThreshold = previousSuppression >= thresholdGnRHPulseSuppressionFraction
+        var finalCrossingHours = if (reachesThreshold) 0.0 else 0.0
+
+        while (time < horizon - 1e-9) {
+            val step = minOf(integrationStepHours, horizon - time)
+            state = rk4(state, step, parameters)
+            val currentTime = time + step
+            val currentSuppression = suppression(state, parameters)
+            peakSuppression = max(peakSuppression, currentSuppression)
+            if (currentSuppression >= thresholdGnRHPulseSuppressionFraction) {
+                reachesThreshold = true
+                finalCrossingHours = currentTime
+            } else if (previousSuppression >= thresholdGnRHPulseSuppressionFraction) {
+                val denominator = previousSuppression - currentSuppression
+                finalCrossingHours = if (denominator > 0.0) {
+                    time + step *
+                        (previousSuppression - thresholdGnRHPulseSuppressionFraction) / denominator
+                } else {
+                    currentTime
+                }
+            }
+            previousSuppression = currentSuppression
+            time = currentTime
+        }
+
+        return EmbeddedProgestogenCoverageEstimate(
+            thresholdGnRHPulseSuppressionFraction = thresholdGnRHPulseSuppressionFraction,
+            peakSuppressionAfterLastDoseFraction = peakSuppression,
+            reachesThreshold = reachesThreshold,
+            timeUntilFinalBelowThresholdHours = finalCrossingHours.coerceIn(0.0, horizon),
+            searchHorizonHours = horizon,
+        )
+    }
+
     private fun derivative(
         state: State,
         parameters: EmbeddedProgestogenParameters,
@@ -230,4 +332,15 @@ object EmbeddedProgestogenGnRHModel {
     )
 
     private fun nonNegative(value: Double): Double = if (value > 0.0) value else 0.0
+
+    private fun suppression(
+        state: State,
+        parameters: EmbeddedProgestogenParameters,
+    ): Double = parameters.maximumPulseSuppressionFraction *
+        state.feedbackSignalFraction.coerceIn(0.0, 1.0)
+
+    private fun coverageSearchHorizonHours(parameters: EmbeddedProgestogenParameters): Double = max(
+        14.0 * 24.0,
+        12.0 * ln(2.0) / parameters.eliminationRatePerHour + 7.0 * 24.0,
+    )
 }
