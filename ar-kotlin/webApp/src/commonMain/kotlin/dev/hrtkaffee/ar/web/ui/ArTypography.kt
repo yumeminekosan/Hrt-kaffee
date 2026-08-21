@@ -11,7 +11,7 @@ import dev.hrtkaffee.ar.webapp.generated.resources.Res
 import dev.hrtkaffee.ar.webapp.generated.resources.terra_ops_cjk
 import org.jetbrains.compose.resources.Font
 
-internal val LocalArFontFamily = staticCompositionLocalOf { FontFamily.Default }
+internal val LocalArFontFamily = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
 
 @Composable
 internal fun ArTypography(content: @Composable () -> Unit) {
