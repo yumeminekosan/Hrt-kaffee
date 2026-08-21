@@ -10,7 +10,6 @@ plugins {
 
 plugins.withType<WasmNodeJsPlugin> {
     the<WasmNodeJsEnvSpec>().apply {
-        download.set(false)
         downloadBaseUrl.set(null as String?)
     }
 }
