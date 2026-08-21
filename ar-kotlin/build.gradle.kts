@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 
@@ -17,4 +19,8 @@ plugins.withType<WasmNodeJsPlugin> {
 allprojects {
     group = "dev.hrtkaffee.ar"
     version = "0.1.0"
+
+    plugins.withType<NodeJsPlugin> {
+        the<NodeJsEnvSpec>().download = false
+    }
 }

@@ -444,6 +444,28 @@
         .target-effect-domain { margin-top: 0.45rem; color: var(--accent-orange); font-size: 0.58rem; letter-spacing: 0.04em; }
         .target-effect-ref { margin-top: 0.45rem; font-size: 0.58rem; }
         .target-effect-ref a { color: var(--accent-gold-dark); text-decoration: none; }
+        .target-effect-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+        .target-effect-controls .form-group:first-child { grid-column: span 2; }
+        .target-effect-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1px;
+            margin-top: 0.7rem;
+            background: rgba(74, 196, 196, 0.22);
+            border: 1px solid rgba(74, 196, 196, 0.22);
+        }
+        .target-effect-metric { min-width: 0; padding: 0.62rem; background: rgba(10, 12, 16, 0.88); }
+        .target-effect-metric.primary { grid-column: span 2; }
+        .target-effect-metric .label { color: var(--text-dim); font-size: 0.52rem; letter-spacing: 0.06em; }
+        .target-effect-metric .value { margin-top: 0.15rem; color: var(--text-main); font-size: 0.9rem; font-weight: 600; }
+        .target-effect-metric.primary .value { color: var(--accent-cyan); font-size: 1.35rem; }
+        .target-effect-chart { margin-top: 0.7rem; padding: 0.55rem; border: 1px solid var(--border-dark); background: var(--bg-base); }
+        .target-effect-chart-title { color: var(--text-dim); font-size: 0.56rem; letter-spacing: 0.08em; }
+        .target-effect-chart-wrap { width: 100%; height: 230px; margin-top: 0.35rem; }
+        .target-effect-chart canvas { display: block; width: 100%; height: 100%; }
+        .target-effect-legend { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.4rem; color: var(--text-sub); font-size: 0.54rem; }
+        .target-effect-legend span::before { content: ''; display: inline-block; width: 12px; height: 2px; margin-right: 0.3rem; vertical-align: middle; background: var(--legend-color); }
+        .target-effect-domain.extrapolated { color: var(--accent-red); }
 
         /* ============================================
            PROGESTOGEN MODULE - RHODES ISLAND TECH STYLE
@@ -709,30 +731,65 @@
                 </div>
             </div>
 
-            <div class="panel target-effect-panel">
+            <div class="panel target-effect-panel" id="fiveArModule" aria-busy="true">
                 <div class="panel-header">
-                    <span class="panel-title">TARGET EFFECT / 靶点效应</span>
-                    <span class="panel-badge">EMPIRICAL</span>
+                    <span class="panel-title">5αR KINETICS / 靶点效应</span>
+                    <span class="panel-badge">KOTLIN</span>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="targetDrugSelect">药物</label>
-                    <select class="form-select" id="targetDrugSelect">
-                        <option value="finasteride">Finasteride / 非那雄胺（口服）</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="targetDoseInput">每日剂量 <span class="unit">mg/day</span></label>
-                    <input type="number" class="form-input" id="targetDoseInput" value="15" min="0" step="0.05">
+                <div class="target-effect-controls">
+                    <div class="form-group">
+                        <label class="form-label" for="targetDrugSelect">药物</label>
+                        <select class="form-select" id="targetDrugSelect">
+                            <option value="finasteride">Finasteride / 非那雄胺（口服）</option>
+                            <option value="dutasteride">Dutasteride / 度他雄胺（口服）</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="targetDoseInput">每日剂量 <span class="unit">mg/day</span></label>
+                        <input type="number" class="form-input" id="targetDoseInput" value="15" min="0" max="20" step="0.05">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="targetDaysInput">观察时长 <span class="unit">days</span></label>
+                        <input type="number" class="form-input" id="targetDaysInput" value="14" min="1" max="365" step="1">
+                    </div>
                 </div>
                 <div class="target-effect-readout" aria-live="polite">
-                    <div class="target-effect-label">SERUM DHT SUPPRESSION / 血清 DHT 下降</div>
-                    <div class="target-effect-value" id="targetEffectValue">~72.2%</div>
-                    <div class="target-effect-note">这是 5α-还原酶→DHT 的上游效应，不是直接 AR 受体拮抗率。</div>
-                    <div class="target-effect-domain" id="targetEffectDomain">实测域外：采用 5 mg/day 终点平台值，不推断额外收益。</div>
-                    <div class="target-effect-ref">
-                        <a href="https://pubmed.ncbi.nlm.nih.gov/10495374/" target="_blank" rel="noopener noreferrer">PMID 10495374 · 42-day dose-response</a>
-                        · <a href="ar/">动态结合与 DHT 曲线</a>
+                    <div class="target-effect-metrics">
+                        <div class="target-effect-metric primary">
+                            <div class="label">ENDPOINT DHT SUPPRESSION / 终点 DHT 下降</div>
+                            <div class="value" id="targetEffectValue">CALCULATING…</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">PEAK DHT SUPPRESSION / 峰值</div>
+                            <div class="value" id="targetPeakValue">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">MODEL PLASMA CONC. / 模型血浆浓度</div>
+                            <div class="value" id="targetConcentrationValue">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">5αR1 INHIBITION / Ⅰ型</div>
+                            <div class="value" id="targetType1Value">—</div>
+                        </div>
+                        <div class="target-effect-metric">
+                            <div class="label">5αR2 INHIBITION / Ⅱ型</div>
+                            <div class="value" id="targetType2Value">—</div>
+                        </div>
                     </div>
+                    <div class="target-effect-chart">
+                        <div class="target-effect-chart-title">DHT / 5αR TIME COURSE</div>
+                        <div class="target-effect-chart-wrap">
+                            <canvas id="fiveArChart" role="img" aria-label="DHT suppression and 5-alpha-reductase inhibition over time"></canvas>
+                        </div>
+                        <div class="target-effect-legend" aria-hidden="true">
+                            <span style="--legend-color:#4ac4c4">DHT ↓</span>
+                            <span style="--legend-color:#f6c857">5αR1</span>
+                            <span style="--legend-color:#ff6b5f">5αR2</span>
+                        </div>
+                    </div>
+                    <div class="target-effect-note">计算的是 5α-还原酶介导的 T→DHT 上游通量变化，不是直接 AR 受体拮抗率。</div>
+                    <div class="target-effect-domain" id="targetEffectDomain">正在载入 Kotlin 动力学核心…</div>
+                    <div class="target-effect-ref"><a id="targetEffectReference" href="https://doi.org/10.2133/dmpk.25.208" target="_blank" rel="noopener noreferrer">MODEL REFERENCE</a></div>
                 </div>
             </div>
 
@@ -1235,7 +1292,7 @@
 
     <footer>
         <p data-i18n="footer.disclaimer">For research only. Consult physician for treatment.</p>
-        <p class="detail-link"><a href="ar/">FINASTERIDE KINETICS &amp; CURVES →</a></p>
+        <p class="detail-link"><a href="#fiveArModule">5αR KINETICS &amp; CURVES ↑</a></p>
     </footer>
 
     <script>
@@ -1304,65 +1361,6 @@
                 'footer.disclaimer': 'Kun til forskning. Konsulter læge.'
             }
         };
-
-        // Front-facing target-effect projection. The finite empirical table is
-        // deliberately separate from the external AR/CTMC module: finasteride
-        // suppresses DHT production upstream and is not a direct AR antagonist.
-        const FINASTERIDE_SERUM_DHT_POINTS = Object.freeze([
-            { dose: 0.05, suppression: 49.5 },
-            { dose: 0.2, suppression: 68.6 },
-            { dose: 1.0, suppression: 71.4 },
-            { dose: 5.0, suppression: 72.2 }
-        ]);
-
-        function estimateFinasterideSerumDhtSuppression(doseMgPerDay) {
-            const dose = Number.isFinite(doseMgPerDay) ? Math.max(0, doseMgPerDay) : 0;
-            if (dose === 0) return { suppression: 0, domain: 'zero' };
-
-            const first = FINASTERIDE_SERUM_DHT_POINTS[0];
-            const last = FINASTERIDE_SERUM_DHT_POINTS[FINASTERIDE_SERUM_DHT_POINTS.length - 1];
-            if (dose < first.dose) {
-                return {
-                    suppression: first.suppression * dose / first.dose,
-                    domain: 'below'
-                };
-            }
-            if (dose > last.dose) {
-                return { suppression: last.suppression, domain: 'above' };
-            }
-
-            for (let index = 1; index < FINASTERIDE_SERUM_DHT_POINTS.length; index++) {
-                const left = FINASTERIDE_SERUM_DHT_POINTS[index - 1];
-                const right = FINASTERIDE_SERUM_DHT_POINTS[index];
-                if (dose <= right.dose) {
-                    const fraction = (Math.log(dose) - Math.log(left.dose)) /
-                        (Math.log(right.dose) - Math.log(left.dose));
-                    return {
-                        suppression: left.suppression + fraction * (right.suppression - left.suppression),
-                        domain: 'measured'
-                    };
-                }
-            }
-
-            return { suppression: last.suppression, domain: 'measured' };
-        }
-
-        function updateTargetEffect() {
-            const input = document.getElementById('targetDoseInput');
-            const value = document.getElementById('targetEffectValue');
-            const domain = document.getElementById('targetEffectDomain');
-            if (!input || !value || !domain) return;
-
-            const estimate = estimateFinasterideSerumDhtSuppression(Number(input.value));
-            value.textContent = `~${estimate.suppression.toFixed(1)}%`;
-            const messages = {
-                zero: '0 mg/day：未施加药物效应。',
-                below: '低于 0.05 mg/day 实测范围：仅作零点到首个观测点的插值。',
-                measured: '位于 0.05–5 mg/day、42 天研究剂量范围内；按对数剂量插值。',
-                above: '实测域外：采用 5 mg/day 终点平台值，不推断额外收益。'
-            };
-            domain.textContent = messages[estimate.domain];
-        }
 
         // ============================================
         // Literature-Calibrated Drug Database
@@ -3064,8 +3062,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             sim = new Simulator();
             updateDrugParams();
-            updateTargetEffect();
-            document.getElementById('targetDoseInput')?.addEventListener('input', updateTargetEffect);
             
             // Model selector event handlers
             document.querySelectorAll('#sdeModelSelector .model-chip').forEach(chip => {
@@ -3416,7 +3412,7 @@
         addConcentrationRow(8, 100);
         addConcentrationRow(12, 60);
 
-
     </script>
+    <script src="kinetics/hrt-kaffee-kinetics.js"></script>
 </body>
 </html>

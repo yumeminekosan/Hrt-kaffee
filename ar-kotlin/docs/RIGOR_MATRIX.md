@@ -26,7 +26,8 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 | Spatial PDE | Same-network reaction drift plus conservative 1D finite-volume step | Conditional theorem + numerical certificate | Spatial/L²/K/replacement/tightness gates; CFL, positivity, conservation residual | Prove AR-specific replacement/local-equilibrium and tightness estimates |
 | Chain complex | Simplicial faces and boundary; stoichiometric two-term complex | Exact identity | `∂²=0`; exact left/right nullspaces | Interpret selected cycles/conservation laws physically |
 | Finasteride PK/PD | Saturable SRD5A2 binding, SRD5A1 inhibition and serum-DHT turnover | Identified population parameterization + numerical certificate | JVM RK4 step-halving; JVM/Wasm trajectory parity; 0–1 bounds | Re-identify for an individual; doses above 5 mg/day are repeated-dose extrapolations |
-| UI | Finasteride dose/time inputs, endpoint metrics and three time curves | Presentation only | Kotlin + Compose/Wasm build; DOM fallback parity | UI is not an evidence source; the mathematical flow is intentionally hidden |
+| Dutasteride PK/PD | Dual SRD5A1/SRD5A2 competitive engagement, time-dependent enzyme inactivation and serum-DHT turnover | Regulatory/literature-anchored population parameterization + numerical certificate | 0.5 mg/day 1/2-week and 24-week calibration windows; RK4 step-halving; 0–1 bounds | Accessibility/inactivation parameters are population-effective, not direct structural constants or an individual fit |
+| Integrated UI | Finasteride/dutasteride dose/time inputs, endpoint metrics and three time curves inside the original Hrt-kaffee page | Presentation only | Kotlin/JVM↔Kotlin/JS trajectory parity; browser build; unchanged-page identity checks | UI is not an evidence source; the mathematical flow is intentionally hidden |
 
 ## Assumption policy
 
@@ -41,8 +42,8 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 ## Parameter policy
 
 The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. The finasteride
-path instead uses the published Suzuki et al. population PK/PD parameters, but they remain population
-parameters rather than an individual fit. No result may be described as a patient-specific estimate,
+path uses the published Suzuki et al. population PK/PD parameters; the dutasteride path uses regulatory
+PK anchors and population DHT time-course calibration. Both remain population parameters rather than an individual fit. No result may be described as a patient-specific estimate,
 clinical efficacy guarantee, dose conversion, or safety recommendation.
 
 The default quantum panel evaluates only `λ_th=h/sqrt(2πmk_BT)`. It deliberately leaves the AR CTMC rates unchanged. A rate update requires a separate `ExactQuantumRateCalibration` whose source and named reaction multipliers are explicit.

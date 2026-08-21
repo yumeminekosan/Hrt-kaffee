@@ -51,6 +51,43 @@ metrics, and curves. As in the AR network, any nuclear-quantum correction must e
 `ExactQuantumRateCalibration` carrying externally identified `ΔΔGbind`/`ΔΔG‡`, provenance and
 named reaction IDs; the thermal de Broglie wavelength alone never changes a finasteride rate.
 
+## 0.5. Dutasteride is a dual enzyme inhibitor, not an AR competitor
+
+Dutasteride adds competitive, time-dependent inhibited states for both `SRD5A1` and `SRD5A2`.
+The experimentally observed `7BW1` structure contains finasteride rather than dutasteride; the shared
+4-azasteroid/NADP-adduct geometry is therefore recorded only as a structural template/inference, never
+as a direct dutasteride complex. The molecule is `C27H30F6N2O2`, molecular weight `528.53 g mol⁻¹`.
+
+The oral population projection uses the regulator-reported `F=0.60`, `Tmax=1–3 h`, `V=300–500 L`
+and terminal half-life `3–5 weeks`. With a 35-day central half-life, `ka=1.5 h⁻¹`, `V=300 L`, gut
+amount `Xg` and plasma concentration `C`, the hidden PK equations are
+
+```text
+dXg/dt = -ka Xg
+dC/dt  = ka F Xg/V - ke C,             ke = ln(2)/(35·24 h).
+```
+
+For active enzyme fractions `E1`, `E2`, structural competitive scales `Ki,1=3.9 nM`, `Ki,2=1.8
+nM`, and declared population accessibility scale `s=12`,
+
+```text
+θi       = C/(C+s Ki,i)
+dEi/dt   = krec(1-Ei) - kinact θi Ei
+dD/dt    = kout [f2 E2 + (1-f2) E1 - D].
+```
+
+The population-effective values are `krec=0.006 h⁻¹`, `kinact=0.12 h⁻¹`, `f2=0.80` and
+`kout=0.188 h⁻¹`. The accessibility scale is not represented as a microscopic dissociation constant;
+it absorbs protein binding, tissue access and unmodelled enzyme turnover at this reduced level. It is
+calibrated so the 0.5 mg/day projection remains inside the reported DHT reductions of approximately
+85% after one week, 90% after two weeks and 94–95% on the longer dose-ranging horizon. RK4
+step-halving and JVM/browser parity certify only the numerical projection.
+
+`DutasterideMicroscopicNetwork` supplies the finite dual-enzyme CTMC. The same reaction table feeds
+the exact generator, random-time-change/jump-martingale audit, density symbol and Hamiltonian,
+tilt/Doob construction, optional spatial lift and stoichiometric chain complex. The original page
+renders only regimen controls, enzyme-inhibition observables, DHT suppression and curves.
+
 ## 1. Mechanisms remain separate
 
 The reduced panel has two control coordinates:

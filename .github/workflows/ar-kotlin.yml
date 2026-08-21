@@ -42,10 +42,14 @@ jobs:
           :composeApp:compileKotlin
           :webApp:jvmTest
           :webApp:wasmJsBrowserDistribution
+          :embeddedEngine:jvmTest
+          :embeddedEngine:jsBrowserDistribution
       - name: Upload browser distribution
         uses: actions/upload-artifact@v6
         with:
           name: hrt-kaffee-ar-web
-          path: ar-kotlin/webApp/build/dist/wasmJs/productionExecutable
+          path: |
+            ar-kotlin/webApp/build/dist/wasmJs/productionExecutable
+            ar-kotlin/embeddedEngine/build/dist/js/productionExecutable
           if-no-files-found: error
           retention-days: 7

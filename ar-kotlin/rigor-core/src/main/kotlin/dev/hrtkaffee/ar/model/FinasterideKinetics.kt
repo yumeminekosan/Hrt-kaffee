@@ -69,7 +69,7 @@ data class FinasterideRegimen(
 ) {
     init {
         require(dailyDoseMg in 0.0..20.0) { "The interactive domain is 0 to 20 mg/day" }
-        require(days in 1..42) { "The interactive horizon is 1 to 42 days" }
+        require(days in 1..365) { "The interactive horizon is 1 to 365 days" }
         require(doseIntervalHours > 0.0)
         require(integrationStepHours > 0.0 && integrationStepHours <= 0.1)
     }

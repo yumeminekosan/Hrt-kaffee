@@ -45,7 +45,7 @@ data class FinasterideRegimen(
 ) {
     init {
         require(dailyDoseMg in 0.0..20.0)
-        require(days in 1..42)
+        require(days in 1..365)
         require(doseIntervalHours > 0.0)
         require(integrationStepHours > 0.0 && integrationStepHours <= 0.1)
     }
