@@ -17,7 +17,7 @@ flowchart TD
     A --> J["空间晶格上的交互粒子系统"]
     J --> K["L,K→∞：水动力 PDE"]
     A --> L["链复形、守恒量与反应循环"]
-    A --> M["非那雄胺群体 PK/PD 投影<br/>前端仅显示输入、结果与曲线"]
+    A --> M["非那/度他雄胺群体 PK/PD 投影<br/>原页面仅显示输入、结果与曲线"]
 ```
 
 The quantum branch is deliberately one-way through `Q1`: no direct `Q --> A` edge exists.
@@ -39,6 +39,14 @@ random-time-change, martingale, nonlinear-generator/Hamiltonian, Doob, metastabi
 constructors consume those same generic objects. None of those names or derivations is rendered
 by `webApp`; the browser projection is restricted to regimen input, 5αR1/5αR2 outputs, serum-DHT
 suppression and the time curves.
+
+`DutasterideMicroscopicNetwork` uses the corresponding dual-enzyme channels
+`DUT + SRD5A1 ⇄ SRD5A1·DUT` and `DUT + SRD5A2 ⇄ SRD5A2·DUT`. Its structural record
+explicitly marks PDB `7BW1` as a related 4-azasteroid template rather than pretending that a direct
+dutasteride complex was observed. `DutasterideRigorousPipeline` applies the same single-source
+generator/density/chain rule. `embeddedEngine` is parity-tested against both JVM models and writes
+only dose/time observables into the existing Hrt-kaffee page; it never renders the internal theorem or
+operator names.
 
 | Requested node or arrow | Status | Kotlin realization and check | Honest boundary |
 |---|---|---|---|
