@@ -1499,7 +1499,7 @@
                 <div class="status-badge" id="statusBadge" data-i18n="status.ready">READY</div>
             </div>
 
-            <div class="stats-grid">
+            <div class="stats-grid" data-cat-module="stats-summary">
                 <div class="stat-card">
                     <div class="stat-label" data-i18n="stat.cmax">Cmax</div>
                     <div class="stat-value" id="cmaxStat">-<span class="stat-unit">pg/mL</span></div>
@@ -1532,7 +1532,7 @@
                 </div>
             </div>
 
-            <div class="chart-grid">
+            <div class="chart-grid" data-cat-module="time-curves">
                 <div class="chart-container full-width">
                     <div class="chart-wrapper tall">
                         <canvas id="mainChart"></canvas>
@@ -1559,7 +1559,7 @@
                 </div>
             </div>
 
-            <div class="chart-container full-width" style="border: none; border-top: 1px solid var(--border-dark);">
+            <div class="chart-container full-width" data-cat-module="event-log" style="border: none; border-top: 1px solid var(--border-dark);">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="panel.log">Log</span>
                 </div>
@@ -1573,7 +1573,7 @@
         </div>
     </main>
 
-    <footer>
+    <footer data-cat-module="research-footer">
         <p data-i18n="footer.disclaimer">For research only. Consult physician for treatment.</p>
         <p class="detail-link"><a href="#fiveArModule">5αR KINETICS &amp; CURVES ↑</a></p>
     </footer>

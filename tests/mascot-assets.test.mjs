@@ -20,6 +20,10 @@ const modules = [
   'pk-parameters',
   'simulation-controls',
   'results',
+  'stats-summary',
+  'time-curves',
+  'event-log',
+  'research-footer',
 ];
 
 test('every simulator module has one mascot host and controller entry', () => {

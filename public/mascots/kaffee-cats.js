@@ -13,7 +13,11 @@
         'monte-carlo': { slug: 'monte-carlo', label: '蒙特卡洛白猫' },
         'pk-parameters': { slug: 'pk-parameters', label: 'PK 参数棕虎斑猫' },
         'simulation-controls': { slug: 'simulation-controls', label: '运行控制奶牛猫' },
-        results: { slug: 'results', label: '结果图表缅因猫' }
+        results: { slug: 'results', label: '结果状态缅因猫' },
+        'stats-summary': { slug: 'stats-summary', label: '统计摘要灰猫' },
+        'time-curves': { slug: 'time-curves', label: '时间曲线蓝猫' },
+        'event-log': { slug: 'event-log', label: '事件日志黑白猫' },
+        'research-footer': { slug: 'research-footer', label: '研究说明白长毛猫' }
     };
 
     const cats = new Map();
@@ -57,6 +61,22 @@
         const moduleName = host.dataset.catModule;
         const cat = makeCat(moduleName);
         if (!cat) return;
+
+        if (host.matches('.stats-grid, .chart-grid')) {
+            host.classList.add('kaffee-cat-floating-host');
+            cat.classList.add('kaffee-cat-floating');
+            host.append(cat);
+            cats.set(moduleName, cat);
+            return;
+        }
+
+        if (host.tagName === 'FOOTER') {
+            host.classList.add('kaffee-cat-host');
+            cat.classList.add('kaffee-cat-footer');
+            host.append(cat);
+            cats.set(moduleName, cat);
+            return;
+        }
 
         let header = host.matches('.chart-area')
             ? host.querySelector(':scope > .chart-header')
@@ -153,15 +173,25 @@
         runButton?.addEventListener('click', () => {
             setModuleState('simulation-controls', 'busy');
             setModuleState('results', 'busy');
+            setModuleState('stats-summary', 'busy');
+            setModuleState('time-curves', 'busy');
+            setModuleState('event-log', 'busy');
         });
         stopButton?.addEventListener('click', () => {
             setModuleState('simulation-controls', 'error', 1000);
             setModuleState('results', 'error', 1000);
+            setModuleState('stats-summary', 'error', 1000);
+            setModuleState('time-curves', 'error', 1000);
+            setModuleState('event-log', 'error', 1000);
         });
         resetButton?.addEventListener('click', () => {
             setModuleState('simulation-controls', 'petted', 800);
             setModuleState('results', 'sleepy');
+            setModuleState('stats-summary', 'sleepy');
+            setModuleState('time-curves', 'sleepy');
             window.setTimeout(() => setModuleState('results', 'idle'), 1100);
+            window.setTimeout(() => setModuleState('stats-summary', 'idle'), 1100);
+            window.setTimeout(() => setModuleState('time-curves', 'idle'), 1100);
         });
         exportButton?.addEventListener('click', () => {
             setModuleState('simulation-controls', 'happy', 1000);
@@ -175,12 +205,18 @@
                 const status = statusBadge.textContent.trim().toLowerCase();
                 if (/running|计算|模拟/.test(status)) {
                     setModuleState('results', 'busy');
+                    setModuleState('stats-summary', 'busy');
+                    setModuleState('time-curves', 'busy');
                 } else if (/error|fail|错误/.test(status)) {
                     setModuleState('results', 'error', 1400);
                     setModuleState('simulation-controls', 'error', 1400);
+                    setModuleState('stats-summary', 'error', 1400);
+                    setModuleState('time-curves', 'error', 1400);
                 } else if (/complete|done|ready|完成|就绪/.test(status)) {
                     setModuleState('results', 'happy', 1200);
                     setModuleState('simulation-controls', 'happy', 1200);
+                    setModuleState('stats-summary', 'happy', 1200);
+                    setModuleState('time-curves', 'happy', 1200);
                 }
             }).observe(statusBadge, { childList: true, subtree: true, characterData: true });
         }
@@ -190,9 +226,12 @@
                 const progress = Number.parseFloat(progressFill.style.width) || 0;
                 if (progress > 0 && progress < 100) {
                     setModuleState('results', 'busy');
+                    setModuleState('time-curves', 'busy');
                 } else if (progress >= 100) {
                     setModuleState('results', 'happy', 1200);
                     setModuleState('simulation-controls', 'happy', 1200);
+                    setModuleState('stats-summary', 'happy', 1200);
+                    setModuleState('time-curves', 'happy', 1200);
                 }
             }).observe(progressFill, { attributes: true, attributeFilter: ['style'] });
         }
@@ -222,11 +261,25 @@
         });
     }
 
+    function bindLogReactions() {
+        const log = document.getElementById('logContainer');
+        if (!log) return;
+        new MutationObserver(() => {
+            const content = log.textContent.toLowerCase();
+            if (/error|fail|错误/.test(content)) {
+                setModuleState('event-log', 'error', 1100);
+            } else {
+                setModuleState('event-log', 'happy', 750);
+            }
+        }).observe(log, { childList: true, subtree: true, characterData: true });
+    }
+
     function installKaffeeCats() {
         document.querySelectorAll('[data-cat-module]').forEach(attachCat);
         bindModuleInteractions();
         bindSimulationStates();
         bindResultReadouts();
+        bindLogReactions();
     }
 
     if (document.readyState === 'loading') {

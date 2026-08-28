@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "canvas": [512, 512],
   "layers": ["body", "tail", "head"],
   "defaultRig": {
@@ -20,6 +20,10 @@
     "monte-carlo": "Monte Carlo / 白猫",
     "pk-parameters": "PK Parameters / 棕虎斑猫",
     "simulation-controls": "Simulation Controls / 奶牛猫",
-    "results": "Results Dashboard / 缅因猫"
+    "results": "Results Status / 缅因猫",
+    "stats-summary": "Summary Statistics / 灰猫",
+    "time-curves": "Time Curves / 蓝猫",
+    "event-log": "Event Log / 黑白猫",
+    "research-footer": "Research Notes / 白长毛猫"
   }
 }

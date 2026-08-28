@@ -35,6 +35,32 @@
     margin: -0.25rem 0 -0.2rem;
 }
 
+.kaffee-cat-floating-host {
+    position: relative;
+}
+
+.kaffee-cat-floating {
+    --cat-size: 66px;
+    position: absolute;
+    top: -20px;
+    right: 0.35rem;
+    z-index: 8;
+}
+
+footer.kaffee-cat-host {
+    position: relative;
+    padding-right: 96px;
+}
+
+.kaffee-cat-footer {
+    --cat-size: 72px;
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    z-index: 2;
+    transform: translateY(-50%);
+}
+
 .kaffee-cat {
     --cat-size: 58px;
     position: relative;
@@ -243,6 +269,21 @@
 
     .chart-header .kaffee-cat {
         --cat-size: 60px;
+    }
+
+    .kaffee-cat-floating {
+        --cat-size: 52px;
+        top: -14px;
+        right: 0.15rem;
+    }
+
+    footer.kaffee-cat-host {
+        padding-right: 74px;
+    }
+
+    .kaffee-cat-footer {
+        --cat-size: 56px;
+        right: 0.5rem;
     }
 }
 

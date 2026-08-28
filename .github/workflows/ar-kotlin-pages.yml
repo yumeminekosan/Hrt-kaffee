@@ -67,6 +67,8 @@ jobs:
           grep -q 'data-cat-module="transdermal-e2"' _site/index.html
           test -f _site/mascots/kaffee-cats.css
           test -f _site/mascots/cats/results/head.png
+          test -f _site/mascots/cats/research-footer/head.png
+          test "$(find _site/mascots/cats -type f -name '*.png' | wc -l)" -eq 48
           grep -q 'src="kinetics/hrt-kaffee-kinetics.js"' _site/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
