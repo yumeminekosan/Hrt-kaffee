@@ -7,6 +7,7 @@
     <meta name="version" content="2026-03-05-v3.2-diagnostic-2">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,25 95,75 50,95 5,75 5,25' fill='%2316191e' stroke='%23f6c857' stroke-width='2'/><text x='50' y='60' font-size='30' fill='%23f6c857' text-anchor='middle' font-family='monospace'>PK</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="mascots/kaffee-cats.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -843,7 +844,7 @@
 
     <main class="main-layout">
         <aside class="sidebar">
-            <div class="panel">
+            <div class="panel" data-cat-module="presets">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="preset.title">Quick Presets</span>
                     <span class="panel-badge">LIT</span>
@@ -868,7 +869,7 @@
                 </div>
             </div>
 
-            <div class="panel target-effect-panel" id="fiveArModule" aria-busy="true">
+            <div class="panel target-effect-panel" id="fiveArModule" aria-busy="true" data-cat-module="five-ar">
                 <div class="panel-header">
                     <span class="panel-title">5αR KINETICS / 靶点效应</span>
                     <span class="panel-badge">KOTLIN</span>
@@ -930,7 +931,7 @@
                 </div>
             </div>
 
-            <div class="panel target-effect-panel td-e2-module" id="transdermalEstradiolModule" aria-busy="true">
+            <div class="panel target-effect-panel td-e2-module" id="transdermalEstradiolModule" aria-busy="true" data-cat-module="transdermal-e2">
                 <div class="panel-header">
                     <span class="panel-title">TRANSDERMAL E2 / 多层透皮</span>
                     <span class="panel-badge">KOTLIN · RK4</span>
@@ -1019,7 +1020,7 @@
                 <div class="target-effect-ref"><a href="https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/020538s037;s039lbl.pdf" target="_blank" rel="noopener noreferrer">VIVELLE-DOT LABEL · POPULATION PK ANCHOR</a></div>
             </div>
 
-            <div class="panel">
+            <div class="panel" data-cat-module="drug-settings">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="panel.drug">Drug Settings</span>
                 </div>
@@ -1066,7 +1067,7 @@
                 </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" data-cat-module="model-selection">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="panel.model">Model Selection</span>
                 </div>
@@ -1118,7 +1119,7 @@
             <!-- Uses individual blood concentration data to estimate PK parameters -->
             <!-- Based on MCMC (Markov Chain Monte Carlo) method -->
             <!-- ===================================================== -->
-            <div class="panel pg-module" id="bayesianModule">
+            <div class="panel pg-module" id="bayesianModule" data-cat-module="bayesian">
                 <div class="pg-header">
                     <span class="pg-title">BAYESIAN ESTIMATOR</span>
                     <span class="pg-badge">MCMC</span>
@@ -1268,7 +1269,7 @@
 
             <!-- PR occupancy + delayed GnRH feedback. The Kotlin projection is the only
                  calculation surface in this panel; legacy CYP/Hill display is excluded. -->
-            <div class="panel target-effect-panel pg-module" id="progestogenInteractionPanel" aria-busy="false">
+            <div class="panel target-effect-panel pg-module" id="progestogenInteractionPanel" aria-busy="false" data-cat-module="progestogen">
                 <div class="pg-header">
                     <span class="pg-title">PROGESTOGEN / FEEDBACK WINDOW</span>
                     <span class="pg-badge">KOTLIN · PR → GnRH</span>
@@ -1395,7 +1396,7 @@
                 </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" data-cat-module="interactions">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="panel.interactions">Drug Interactions</span>
                 </div>
@@ -1413,7 +1414,7 @@
                 </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" data-cat-module="monte-carlo">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="panel.monteCarlo">Monte Carlo</span>
                 </div>
@@ -1429,7 +1430,7 @@
                 </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" data-cat-module="pk-parameters">
                 <div class="panel-header">
                     <span class="panel-title" data-i18n="panel.pkParams">PK Parameters</span>
                     <span class="panel-badge" id="litBadge">PMID</span>
@@ -1479,7 +1480,7 @@
                 </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" data-cat-module="simulation-controls">
                 <button class="btn btn-primary" id="runSimulation" data-i18n="btn.run">RUN SIMULATION</button>
                 <div class="btn-group" style="margin-top: 0.5rem;">
                     <button class="btn btn-secondary btn-sm" id="stopBtn" disabled data-i18n="btn.stop">Stop</button>
@@ -1489,7 +1490,7 @@
             </div>
         </aside>
 
-        <div class="chart-area">
+        <div class="chart-area" data-cat-module="results">
             <div class="chart-header">
                 <div class="chart-title">
                     <h1 data-i18n="title.simulator">Monte Carlo PK/PD Simulator</h1>
@@ -3688,6 +3689,7 @@
         addConcentrationRow(12, 60);
 
     </script>
+    <script src="mascots/kaffee-cats.js"></script>
     <script src="kinetics/hrt-kaffee-kinetics.js"></script>
 </body>
 </html>

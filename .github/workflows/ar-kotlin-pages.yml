@@ -48,6 +48,8 @@ jobs:
           :embeddedEngine:jsBrowserDistribution
       - name: Assemble Pages site
         run: |
+          node --check public/mascots/kaffee-cats.js
+          node --test tests/mascot-assets.test.mjs
           mkdir -p _site/ar _site/kinetics
           cp -R public/. _site/
           cp public/pkpd-simulator-v3.html _site/index.html
@@ -62,6 +64,9 @@ jobs:
           grep -q 'id="tdE2Chart"' _site/index.html
           grep -q 'id="pgGnrhResults"' _site/index.html
           grep -q 'id="pgCoverageDuration"' _site/index.html
+          grep -q 'data-cat-module="transdermal-e2"' _site/index.html
+          test -f _site/mascots/kaffee-cats.css
+          test -f _site/mascots/cats/results/head.png
           grep -q 'src="kinetics/hrt-kaffee-kinetics.js"' _site/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

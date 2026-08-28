@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "canvas": [512, 512],
+  "layers": ["body", "tail", "head"],
+  "defaultRig": {
+    "bodyOrigin": [0.5, 0.72],
+    "headOrigin": [0.48, 0.4],
+    "tailOrigin": [0.63, 0.78]
+  },
+  "states": ["idle", "curious", "pounce", "busy", "happy", "petted", "error", "sleepy"],
+  "cats": {
+    "presets": "Quick Presets / 三花猫",
+    "five-ar": "5αR Kinetics / 银虎斑猫",
+    "transdermal-e2": "Transdermal E2 / 奶牛猫",
+    "drug-settings": "Drug Settings / 橘猫",
+    "model-selection": "Model Selection / 暹罗猫",
+    "bayesian": "Bayesian Estimator / 黑猫",
+    "progestogen": "Progestogen PR-GnRH / 布偶猫",
+    "interactions": "Drug Interactions / 玳瑁猫",
+    "monte-carlo": "Monte Carlo / 白猫",
+    "pk-parameters": "PK Parameters / 棕虎斑猫",
+    "simulation-controls": "Simulation Controls / 奶牛猫",
+    "results": "Results Dashboard / 缅因猫"
+  }
+}
