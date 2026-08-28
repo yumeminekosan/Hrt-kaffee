@@ -83,14 +83,18 @@ data class ProgestogenGnRHParameters(
                 COMMON_ASSOCIATION_RATE, COMMON_FEEDBACK_RATE, MAXIMUM_SUPPRESSION,
             )
             ProgestogenLigand.PROGESTERONE -> ProgestogenGnRHParameters(
-                314.47, 0.028, 0.50, 0.70, 50.0, 9.01,
+                // Calibrated against the labelled multiple-dose Cmax (100 mg/day)
+                // while retaining the oral terminal phase reported for micronised P4.
+                314.47, 0.00578, 2.50, ln(2.0) / 16.8, 50.0, 9.01,
                 COMMON_ASSOCIATION_RATE, COMMON_FEEDBACK_RATE, MAXIMUM_SUPPRESSION,
             )
         }
 
         private const val COMMON_ASSOCIATION_RATE = 0.005
         private val COMMON_FEEDBACK_RATE = ln(2.0) / 36.0
-        private const val MAXIMUM_SUPPRESSION = 0.85
+        // Conservative population ceiling: the human pulse data support
+        // delayed feedback, not an 80%+ deterministic suppression claim.
+        private const val MAXIMUM_SUPPRESSION = 0.55
     }
 }
 
@@ -143,6 +147,19 @@ data class ProgestogenGnRHResult(
 )
 
 /**
+ * A post-last-dose window for the same population PR→GnRH feedback state.
+ * The threshold is a model reporting choice, not a claim about an individual
+ * person's subjective effects or bodily changes.
+ */
+data class ProgestogenGnRHCoverageEstimate(
+    val thresholdGnRHPulseSuppressionFraction: Double,
+    val peakSuppressionAfterLastDoseFraction: Double,
+    val reachesThreshold: Boolean,
+    val timeUntilFinalBelowThresholdHours: Double,
+    val searchHorizonHours: Double,
+)
+
+/**
  * Ligand–PR binding followed by a delayed, E2-primed GnRH pulse-generator
  * feedback projection. Progesterone is not represented as a GnRH-receptor
  * antagonist; the inhibited observable is the pulse-generator activity.
@@ -192,6 +209,78 @@ class ProgestogenGnRHModel {
             diagnostics = listOf(
                 NumericalDiagnostic("RK4 step-halving terminal-state residual", error, tolerance),
             ),
+        )
+    }
+
+    /**
+     * Starts from the regimen state at the end of the selected observation
+     * history, gives one final scheduled dose at t=0, then evolves without
+     * further doses until the feedback signal decays below the selected
+     * absolute suppression threshold.
+     */
+    fun estimateCoverageAfterLastDose(
+        regimen: ProgestogenGnRHRegimen,
+        thresholdGnRHPulseSuppressionFraction: Double,
+    ): ProgestogenGnRHCoverageEstimate {
+        require(thresholdGnRHPulseSuppressionFraction in 0.01..0.80)
+        val parameters = ProgestogenGnRHParameters.forLigand(regimen.ligand)
+        val doseNmole = regimen.doseMg * 1_000_000.0 /
+            parameters.molecularWeightGramsPerMole
+        val historyDuration = regimen.days * 24.0
+        var historyState = ProgestogenGnRHState(0.0, 0.0, 0.0, 0.0)
+        var historyTime = 0.0
+        var nextDoseTime = 0.0
+
+        while (historyTime < historyDuration - 1e-9) {
+            if (historyTime + 1e-9 >= nextDoseTime && nextDoseTime < historyDuration - 1e-9) {
+                historyState = historyState.copy(
+                    gutAmountNmole = historyState.gutAmountNmole + doseNmole,
+                )
+                nextDoseTime += regimen.doseIntervalHours
+            }
+            val step = minOf(regimen.integrationStepHours, historyDuration - historyTime)
+            historyState = rk4(historyState, step, parameters)
+            historyTime = minOf(historyDuration, historyTime + step)
+        }
+
+        // The selected time marks the last administration; no later doses are
+        // scheduled during this washout calculation.
+        var state = historyState.copy(gutAmountNmole = historyState.gutAmountNmole + doseNmole)
+        val horizon = coverageSearchHorizonHours(parameters)
+        var time = 0.0
+        var previousSuppression = suppression(state, parameters)
+        var peakSuppression = previousSuppression
+        var reachesThreshold = previousSuppression >= thresholdGnRHPulseSuppressionFraction
+        var finalCrossingHours = 0.0
+
+        while (time < horizon - 1e-9) {
+            val step = minOf(regimen.integrationStepHours, horizon - time)
+            state = rk4(state, step, parameters)
+            val currentTime = time + step
+            val currentSuppression = suppression(state, parameters)
+            peakSuppression = max(peakSuppression, currentSuppression)
+            if (currentSuppression >= thresholdGnRHPulseSuppressionFraction) {
+                reachesThreshold = true
+                finalCrossingHours = currentTime
+            } else if (previousSuppression >= thresholdGnRHPulseSuppressionFraction) {
+                val denominator = previousSuppression - currentSuppression
+                finalCrossingHours = if (denominator > 0.0) {
+                    time + step *
+                        (previousSuppression - thresholdGnRHPulseSuppressionFraction) / denominator
+                } else {
+                    currentTime
+                }
+            }
+            previousSuppression = currentSuppression
+            time = currentTime
+        }
+
+        return ProgestogenGnRHCoverageEstimate(
+            thresholdGnRHPulseSuppressionFraction = thresholdGnRHPulseSuppressionFraction,
+            peakSuppressionAfterLastDoseFraction = peakSuppression,
+            reachesThreshold = reachesThreshold,
+            timeUntilFinalBelowThresholdHours = finalCrossingHours.coerceIn(0.0, horizon),
+            searchHorizonHours = horizon,
         )
     }
 
@@ -309,4 +398,15 @@ class ProgestogenGnRHModel {
     )
 
     private fun nonNegative(value: Double): Double = if (value > 0.0) value else 0.0
+
+    private fun suppression(
+        state: ProgestogenGnRHState,
+        parameters: ProgestogenGnRHParameters,
+    ): Double = parameters.maximumPulseSuppressionFraction *
+        state.feedbackSignalFraction.coerceIn(0.0, 1.0)
+
+    private fun coverageSearchHorizonHours(parameters: ProgestogenGnRHParameters): Double = max(
+        14.0 * 24.0,
+        12.0 * ln(2.0) / parameters.eliminationRatePerHour + 7.0 * 24.0,
+    )
 }

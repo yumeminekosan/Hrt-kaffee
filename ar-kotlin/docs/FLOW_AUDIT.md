@@ -54,7 +54,9 @@ record assigns PDB `1A28` to the observed human PR–progesterone complex and ex
 direct progesterone–GnRH-receptor assignment. `ProgestogenGnRHRigorousPipeline` passes the same
 network into the exact generator, density symbol and chain complex; the generic random-time-change,
 nonlinear-generator/Hamiltonian, Doob/Gillespie and spatial/PDE checks consume it in the integration
-test. The original progestogen panel renders only regimen inputs, PR/GnRH observables and curves.
+test. The original progestogen panel renders only regimen inputs, PR/GnRH observables, curves and a
+selected-threshold post-last-dose feedback window; the window is not rendered as a personal bodily-
+change or subjective-effect endpoint.
 
 | Requested node or arrow | Status | Kotlin realization and check | Honest boundary |
 |---|---|---|---|

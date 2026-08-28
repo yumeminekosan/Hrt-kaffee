@@ -505,8 +505,10 @@
 
         .pg-header {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
+            gap: 0.45rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid rgba(246, 200, 87, 0.2);
             margin-bottom: 0.75rem;
@@ -521,6 +523,8 @@
             letter-spacing: 0.15em;
             color: var(--accent-gold);
             text-transform: uppercase;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         .pg-title::before {
@@ -532,6 +536,9 @@
         }
 
         .pg-badge {
+            flex: 0 1 auto;
+            max-width: 100%;
+            overflow-wrap: anywhere;
             font-size: 0.55rem;
             padding: 0.2rem 0.5rem;
             background: rgba(246, 200, 87, 0.15);
@@ -659,6 +666,129 @@
             border-color: rgba(246, 200, 87, 0.2);
         }
         .pg-gnrh-results .target-effect-metric.primary .value { color: var(--accent-gold); }
+
+        .pg-signal-rail {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin: -0.2rem 0 0.75rem;
+        }
+
+        .pg-signal-rail span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.28rem;
+            padding: 0.2rem 0.4rem;
+            border: 1px solid rgba(246, 200, 87, 0.22);
+            color: var(--text-dim);
+            font-size: 0.5rem;
+            letter-spacing: 0.08em;
+        }
+
+        .pg-signal-rail span::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            background: var(--accent-gold);
+            transform: rotate(45deg);
+            opacity: 0.8;
+        }
+
+        .pg-control-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.5rem;
+        }
+
+        .pg-control-grid .form-group,
+        .pg-coverage-inputs .form-group { min-width: 0; }
+
+        .pg-ledger {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin-top: 0.6rem;
+            border: 1px solid rgba(246, 200, 87, 0.18);
+            background: rgba(10, 12, 16, 0.58);
+        }
+
+        .pg-ledger-cell {
+            min-width: 0;
+            padding: 0.5rem 0.6rem;
+            border-right: 1px solid rgba(246, 200, 87, 0.13);
+            border-bottom: 1px solid rgba(246, 200, 87, 0.13);
+        }
+
+        .pg-ledger-cell:nth-child(2n) { border-right: 0; }
+        .pg-ledger-cell:nth-last-child(-n + 2) { border-bottom: 0; }
+        .pg-ledger-label { color: var(--text-dim); font-size: 0.5rem; letter-spacing: 0.07em; }
+        .pg-ledger-value {
+            overflow: hidden;
+            margin-top: 0.13rem;
+            color: var(--accent-cyan);
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pg-coverage-inputs {
+            display: grid;
+            grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+            gap: 0.5rem;
+            margin-top: 0.65rem;
+        }
+
+        .pg-coverage-card {
+            margin-top: 0.7rem;
+            padding: 0.7rem;
+            border: 1px solid rgba(74, 196, 196, 0.28);
+            background:
+                linear-gradient(100deg, rgba(74, 196, 196, 0.09), transparent 58%),
+                var(--bg-base);
+        }
+
+        .pg-coverage-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .pg-coverage-title { min-width: 0; overflow-wrap: anywhere; color: var(--accent-cyan); font-size: 0.58rem; letter-spacing: 0.1em; }
+        .pg-coverage-kicker { min-width: 0; overflow-wrap: anywhere; color: var(--text-dim); font-size: 0.5rem; letter-spacing: 0.06em; }
+        .pg-coverage-value { margin-top: 0.2rem; color: var(--text-main); font-size: 1.25rem; font-weight: 600; }
+        .pg-coverage-date { overflow-wrap: anywhere; margin-top: 0.12rem; color: var(--accent-gold-dark); font-size: 0.58rem; }
+        .pg-coverage-status { overflow-wrap: anywhere; margin-top: 0.35rem; color: var(--text-sub); font-size: 0.57rem; line-height: 1.45; }
+        .pg-coverage-track {
+            height: 3px;
+            margin-top: 0.55rem;
+            overflow: hidden;
+            background: rgba(74, 196, 196, 0.16);
+        }
+
+        .pg-coverage-fill {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-gold), var(--accent-cyan));
+            transition: width 0.25s ease;
+        }
+
+        .pg-body-note {
+            margin-top: 0.55rem;
+            padding: 0.5rem 0.6rem;
+            border-left: 2px solid rgba(246, 200, 87, 0.65);
+            background: rgba(246, 200, 87, 0.04);
+            color: var(--text-sub);
+            font-size: 0.58rem;
+            line-height: 1.55;
+        }
+
+        @media (max-width: 460px) {
+            .pg-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .pg-control-grid .form-group:first-child { grid-column: span 2; }
+            .pg-coverage-inputs { grid-template-columns: 1fr; }
+        }
 
         .pg-divider {
             height: 1px;
@@ -1047,22 +1177,25 @@
 
 
 
-            <!-- ===================================================== -->================================================ -->
-            <!-- PROGESTOGEN INTERACTION MODULE - RHODES ISLAND TECH -->
-            <!-- 独立孕激素相互作用计算模块 - 源石科技风格 -->
-            <!-- Based on Hill equation for enzyme inhibition -->
-            <!-- Literature: PMID 16645869 (MPA), DrugBank (CPA) -->
-            <!-- ===================================================== -->
-            <div class="panel pg-module" id="progestogenInteractionPanel" aria-busy="false">
+            <!-- PR occupancy + delayed GnRH feedback. The Kotlin projection is the only
+                 calculation surface in this panel; legacy CYP/Hill display is excluded. -->
+            <div class="panel target-effect-panel pg-module" id="progestogenInteractionPanel" aria-busy="false">
                 <div class="pg-header">
-                    <span class="pg-title">PROGESTOGEN MODULE</span>
-                    <span class="pg-badge">KOTLIN · PR</span>
+                    <span class="pg-title">PROGESTOGEN / FEEDBACK WINDOW</span>
+                    <span class="pg-badge">KOTLIN · PR → GnRH</span>
                 </div>
-                
+
+                <div class="pg-signal-rail" aria-hidden="true">
+                    <span>DOSE INPUT</span>
+                    <span>PR OCCUPANCY</span>
+                    <span>DELAYED FEEDBACK</span>
+                    <span>WASHOUT WINDOW</span>
+                </div>
+
                 <div class="form-group">
-                    <label class="form-label">Progestogen Type</label>
-                    <select class="form-select" id="progestogenSelect" onchange="updateProgestogenInteraction(true)">
-                        <option value="none">-- SELECT --</option>
+                    <label class="form-label" for="progestogenSelect">孕激素 / Progestogen</label>
+                    <select class="form-select" id="progestogenSelect">
+                        <option value="none">-- SELECT A MOLECULE --</option>
                         <optgroup label="▎ SYNTHETIC">
                             <option value="MPA">MPA Medroxyprogesterone</option>
                             <option value="CPA">CPA Cyproterone Acetate</option>
@@ -1075,52 +1208,54 @@
                         </optgroup>
                     </select>
                 </div>
-                
-                <div class="form-row-3" id="progestogenDoseRow" style="display: none;">
+
+                <div class="pg-control-grid">
                     <div class="form-group">
-                        <label class="form-label">Dose <span class="unit" id="progestogenDoseUnit">mg</span></label>
-                        <input type="number" class="form-input" id="progestogenDose" value="10" min="0" max="500" step="0.05" onchange="updateProgestogenInteraction(false)">
+                        <label class="form-label" for="progestogenDose">单次剂量 <span class="unit">mg</span></label>
+                        <input type="number" class="form-input" id="progestogenDose" value="10" min="0" max="500" step="0.05" inputmode="decimal">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Interval <span class="unit">h</span></label>
-                        <input type="number" class="form-input" id="progestogenInterval" value="24" min="4" max="168" step="1" onchange="updateProgestogenInteraction(false)">
+                        <label class="form-label" for="progestogenInterval">间隔 <span class="unit">h</span></label>
+                        <input type="number" class="form-input" id="progestogenInterval" value="24" min="4" max="168" step="1" inputmode="decimal">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration <span class="unit">days</span></label>
-                        <input type="number" class="form-input" id="progestogenDays" value="14" min="1" max="365" step="1">
+                        <label class="form-label" for="progestogenDays">既往方案 <span class="unit">days</span></label>
+                        <input type="number" class="form-input" id="progestogenDays" value="14" min="1" max="365" step="1" inputmode="numeric">
                     </div>
                 </div>
-                
-                <div class="pg-equation-box">
-                    POPULATION PROJECTION · INTERNAL AUDITED MODEL
+
+                <div class="pg-ledger" aria-live="polite">
+                    <div class="pg-ledger-cell">
+                        <div class="pg-ledger-label">DAILY EXPOSURE / 日均给药负荷</div>
+                        <div class="pg-ledger-value" id="pgDailyExposure">—</div>
+                    </div>
+                    <div class="pg-ledger-cell">
+                        <div class="pg-ledger-label">PEAK PLASMA / 峰值血浆浓度</div>
+                        <div class="pg-ledger-value" id="pgPeakConcentration">—</div>
+                    </div>
                 </div>
-                
-                <!-- Results Display -->
-                <div id="progestogenResults" style="display: none;">
-                    <div class="pg-results">
-                        <div class="pg-result-row">
-                            <span class="pg-result-label">Steady-State Conc.</span>
-                            <span class="pg-result-value cyan" id="pgCss">-</span>
-                        </div>
-                        <div class="pg-result-row">
-                            <span class="pg-result-label">CYP3A4 Inhibition</span>
-                            <span class="pg-result-value orange" id="pgCyp3a4Effect">-</span>
-                        </div>
-                        <div class="pg-result-row">
-                            <span class="pg-result-label">CYP2C9 Inhibition</span>
-                            <span class="pg-result-value gold" id="pgCyp2c9Effect">-</span>
-                        </div>
-                        <div class="pg-impact-row">
-                            <div class="pg-impact-label">E2 IMPACT ANALYSIS</div>
-                            <span class="pg-result-value green" id="pgE2Effect">-</span>
-                        </div>
+
+                <div class="pg-coverage-inputs">
+                    <div class="form-group">
+                        <label class="form-label" for="pgCoverageThreshold">回落阈值 <span class="unit">GnRH ↓</span></label>
+                        <select class="form-select" id="pgCoverageThreshold">
+                            <option value="0.05">5%</option>
+                            <option value="0.10" selected>10%</option>
+                            <option value="0.20">20%</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="pgLastDoseAt">末次给药时刻 <span class="unit">optional</span></label>
+                        <input type="datetime-local" class="form-input" id="pgLastDoseAt">
                     </div>
                 </div>
 
                 <div class="pg-gnrh-results" id="pgGnrhResults" style="display: none;">
-                    <div class="target-effect-metrics" aria-live="polite">
+                    <div class="pg-equation-box">POPULATION PROJECTION · INTERNAL AUDITED MODEL</div>
+                    <div class="target-effect-readout" aria-live="polite">
+                    <div class="target-effect-metrics">
                         <div class="target-effect-metric primary">
-                            <div class="label">ENDPOINT GnRH PULSE SUPPRESSION / 终点脉冲抑制</div>
+                            <div class="label">END-OF-INTERVAL GnRH FEEDBACK / 间隔末端反馈</div>
                             <div class="value" id="pgGnrhEffect">—</div>
                         </div>
                         <div class="target-effect-metric">
@@ -1140,6 +1275,19 @@
                             <div class="value" id="pgGnrhConcentration">—</div>
                         </div>
                     </div>
+                    </div>
+
+                    <div class="pg-coverage-card">
+                        <div class="pg-coverage-header">
+                            <span class="pg-coverage-title">PR–GnRH COVERAGE WINDOW / 回落计时</span>
+                            <span class="pg-coverage-kicker">LAST DOSE → THRESHOLD</span>
+                        </div>
+                        <div class="pg-coverage-value" id="pgCoverageDuration">—</div>
+                        <div class="pg-coverage-date" id="pgCoverageDate">填写末次给药时间即可映射到日历。</div>
+                        <div class="pg-coverage-status" id="pgCoverageStatus">—</div>
+                        <div class="pg-coverage-track" aria-hidden="true"><div class="pg-coverage-fill" id="pgCoverageFill"></div></div>
+                    </div>
+
                     <div class="target-effect-chart">
                         <div class="target-effect-chart-title">PR / GnRH PULSE TIME COURSE</div>
                         <div class="target-effect-chart-wrap">
@@ -1152,13 +1300,9 @@
                         </div>
                     </div>
                     <div class="target-effect-note">计算的是孕酮/孕激素结合 PR 后、在 E2 预激参考条件下对 GnRH 脉冲发生器的延迟负反馈；不是直接 GnRH 受体竞争性拮抗率。</div>
+                    <div class="pg-body-note">曲线回落不是“跨女身体变化被撤销”的倒计时。它只描述这个模型里的 PR–GnRH 反馈信号；主观状态、乳房组织、雌二醇暴露与个人体验不能由它判定。</div>
                     <div class="target-effect-domain" id="pgGnrhDomain">选择孕激素后载入 Kotlin 动力学核心…</div>
                     <div class="target-effect-ref"><a id="pgGnrhReference" href="https://www.rcsb.org/structure/1A28" target="_blank" rel="noopener noreferrer">MODEL REFERENCE</a></div>
-                </div>
-                
-                <!-- Reference -->
-                <div class="pg-ref" id="progestogenRef">
-                    SELECT PROGESTOGEN TO VIEW INTERACTION DATA
                 </div>
             </div>
 
@@ -1829,11 +1973,21 @@
             }
         };
 
+        // The former sidebar rendered speculative CYP/Hill→E2 percentages.
+        // It is retained only for legacy main-simulator records, and is not
+        // allowed to alter the E2 trajectory from this panel.
+        const LEGACY_PROGESTOGEN_CYP_PROJECTION_ENABLED = false;
+
         // =====================================================
         // 孕激素相互作用计算函数
         // Hill equation for enzyme inhibition
         // =====================================================
         function updateProgestogenInteraction(resetDose = false) {
+            // Retired display path: the live PR–GnRH module is bound by the
+            // Kotlin browser engine after page load. Keeping this compatibility
+            // return prevents old callers from reintroducing unbounded E2/CYP
+            // pseudo-readouts into the panel.
+            return;
             const select = document.getElementById('progestogenSelect');
             const doseInput = document.getElementById('progestogenDose');
             const intervalInput = document.getElementById('progestogenInterval');
@@ -2695,7 +2849,7 @@
                 // Check if main drug is CYP3A4 substrate (most estrogens are)
                 const isCYP3A4Substrate = p.d.cyp3a4 !== false; // default true for most drugs
                 
-                if (selectedProgestogen !== 'none' && isCYP3A4Substrate) {
+                if (LEGACY_PROGESTOGEN_CYP_PROJECTION_ENABLED && selectedProgestogen !== 'none' && isCYP3A4Substrate) {
                     const pgData = PROGESTOGEN_DB[selectedProgestogen];
                     if (pgData && pgData.enzymes && pgData.enzymes.CYP3A4) {
                         // Get progestogen dose from module
@@ -3085,27 +3239,12 @@
             const info = document.getElementById('therapeuticInfo');
             info.innerHTML = `<strong data-i18n="info.therapeutic">${i18n[currentLang]['info.therapeutic']}</strong> ${d.therapeutic[0]}-${d.therapeutic[1]} ${d.unit}<div class="lit-ref">${d.ref}</div>`;
 
-            // Show/hide progestogen panel
-            const progestogenPanel = document.getElementById('progestogenPanel');
-            if (d.isProgestogen && d.hillEnzyme) {
-                progestogenPanel.style.display = 'block';
-                
-                // Initialize Hill model
-                if (typeof sim !== 'undefined') {
-                    sim.hillModel = new HillEnzymeModel(d);
-                }
-                
-                // Update Hill info
-                const hillRef = document.getElementById('hillRef');
-                hillRef.textContent = `${d.hillEnzyme.enzyme}: Ki=${d.hillEnzyme.Ki}μM, IC50=${d.hillEnzyme.IC50}μM, n=${d.hillEnzyme.hillCoef}`;
-                
-                const hillEffect = document.getElementById('hillEffectDisplay');
-                hillEffect.textContent = sim?.hillModel?.getClinicalSignificance() || 'Calculating...';
-            } else {
-                progestogenPanel.style.display = 'none';
-                if (typeof sim !== 'undefined') {
-                    sim.hillModel = null;
-                }
+            // The old hill-info panel was removed. Keep the main simulator's
+            // legacy object isolated, without touching the Kotlin PR/GnRH UI.
+            if (typeof sim !== 'undefined') {
+                sim.hillModel = d.isProgestogen && d.hillEnzyme
+                    ? new HillEnzymeModel(d)
+                    : null;
             }
         }
 
@@ -3450,10 +3589,6 @@
             document.getElementById('vdInput').value = bayesianResults.Vd.median.toFixed(1);
             document.getElementById('kaInput').value = bayesianResults.ka.median.toFixed(4);
             document.getElementById('fInput').value = bayesianResults.F.median.toFixed(3);
-            
-            if (typeof updateProgestogenInteraction === 'function') {
-                updateProgestogenInteraction();
-            }
             
             alert('Parameters applied! Click RUN SIMULATION to use the new values.');
         }

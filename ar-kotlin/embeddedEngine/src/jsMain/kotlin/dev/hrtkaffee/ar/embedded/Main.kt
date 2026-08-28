@@ -9,6 +9,7 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.HTMLSelectElement
 import org.w3c.dom.events.Event
+import kotlin.js.Date
 import kotlin.math.roundToInt
 
 private data class FiveArElements(
@@ -84,23 +85,54 @@ private data class ProgestogenElements(
     val dose: HTMLInputElement,
     val interval: HTMLInputElement,
     val days: HTMLInputElement,
+    val threshold: HTMLSelectElement,
+    val lastDoseAt: HTMLInputElement,
     val endpoint: HTMLElement,
     val peak: HTMLElement,
     val occupancy: HTMLElement,
     val activity: HTMLElement,
     val concentration: HTMLElement,
+    val peakConcentration: HTMLElement,
+    val dailyExposure: HTMLElement,
+    val coverageDuration: HTMLElement,
+    val coverageDate: HTMLElement,
+    val coverageStatus: HTMLElement,
+    val coverageFill: HTMLElement,
     val boundary: HTMLElement,
     val reference: HTMLAnchorElement,
     val canvas: HTMLCanvasElement,
 )
 
+private data class ProgestogenFormState(
+    val doseMg: Double,
+    val intervalHours: Double,
+    val days: Int,
+)
+
 private fun bindProgestogenModule() {
     val elements = findProgestogenElements() ?: return
     var latest: EmbeddedProgestogenProjection? = null
+    var selectedDrug: EmbeddedProgestogen? = null
+    val storedStates = mutableMapOf<EmbeddedProgestogen, ProgestogenFormState>()
+    if (elements.lastDoseAt.value.isBlank()) {
+        elements.lastDoseAt.value = currentLocalDateTimeValue()
+    }
 
     fun hide() {
         elements.results.style.display = "none"
         elements.panel.setAttribute("aria-busy", "false")
+    }
+
+    fun formState(ligand: EmbeddedProgestogen): ProgestogenFormState = ProgestogenFormState(
+        doseMg = boundedInput(elements.dose.value, ligand.defaultDoseMg, 0.0, 500.0),
+        intervalHours = boundedInput(elements.interval.value, 24.0, 4.0, 168.0),
+        days = boundedInput(elements.days.value, 14.0, 1.0, 365.0).roundToInt(),
+    )
+
+    fun setFormState(state: ProgestogenFormState) {
+        elements.dose.value = state.doseMg.displayNumber()
+        elements.interval.value = state.intervalHours.displayNumber()
+        elements.days.value = state.days.toString()
     }
 
     fun render() {
@@ -109,13 +141,35 @@ private fun bindProgestogenModule() {
             return
         }
         val ligand = EmbeddedProgestogen.fromWireId(elements.drug.value)
-        val dose = (elements.dose.value.toDoubleOrNull() ?: ligand.defaultDoseMg)
-            .coerceIn(0.0, 500.0)
-        val interval = (elements.interval.value.toDoubleOrNull() ?: 24.0)
-            .coerceIn(4.0, 168.0)
-        val days = (elements.days.value.toIntOrNull() ?: 14).coerceIn(1, 365)
+        val state = formState(ligand)
+        if (selectedDrug != ligand) {
+            selectedDrug?.let { previous -> storedStates[previous] = formState(previous) }
+            val restored = storedStates[ligand] ?: ProgestogenFormState(
+                doseMg = ligand.defaultDoseMg,
+                intervalHours = 24.0,
+                days = 14,
+            )
+            selectedDrug = ligand
+            setFormState(restored)
+            render()
+            return
+        }
+        setFormState(state)
         elements.panel.setAttribute("aria-busy", "true")
-        val result = EmbeddedProgestogenGnRHModel.simulate(ligand, dose, interval, days)
+        val result = EmbeddedProgestogenGnRHModel.simulate(
+            ligand,
+            state.doseMg,
+            state.intervalHours,
+            state.days,
+        )
+        val threshold = boundedInput(elements.threshold.value, 0.10, 0.01, 0.80)
+        val coverage = EmbeddedProgestogenGnRHModel.estimateCoverageAfterLastDose(
+            ligand,
+            state.doseMg,
+            state.intervalHours,
+            state.days,
+            threshold,
+        )
         latest = result
         elements.endpoint.textContent = percent(result.endpoint.gnrhPulseSuppressionFraction)
         elements.peak.textContent = percent(result.peakGnRHPulseSuppressionFraction)
@@ -124,6 +178,29 @@ private fun bindProgestogenModule() {
         elements.concentration.textContent = concentrationNgMl(
             result.endpoint.plasmaConcentrationNgPerMl,
         )
+        elements.peakConcentration.textContent = concentrationNgMl(
+            result.curve.maxOf { point -> point.plasmaConcentrationNgPerMl },
+        )
+        elements.dailyExposure.textContent = "${(state.doseMg * 24.0 / state.intervalHours).displayNumber()} mg/day"
+        elements.coverageDuration.textContent = when {
+            !coverage.reachesThreshold -> "< ${percent(threshold)}"
+            else -> duration(coverage.timeUntilFinalBelowThresholdHours)
+        }
+        elements.coverageStatus.textContent = when {
+            !coverage.reachesThreshold ->
+                "末次给药后，模型峰值未达到 ${percent(threshold)} 的 GnRH 反馈阈值。"
+            else ->
+                "末次给药后，PR–GnRH 反馈最后一次降至 ${percent(threshold)} 以下。"
+        }
+        elements.coverageDate.textContent = projectedDateTime(
+            elements.lastDoseAt.value,
+            coverage.timeUntilFinalBelowThresholdHours,
+            coverage.reachesThreshold,
+        )
+        elements.coverageFill.style.width = "${(
+            (coverage.timeUntilFinalBelowThresholdHours / coverage.searchHorizonHours)
+                .coerceIn(0.0, 1.0) * 100.0
+            ).roundToInt()}%"
         elements.boundary.textContent = result.boundaryMessage
         elements.boundary.classList.toggle("extrapolated", !result.isReferenceDomain)
         elements.reference.textContent = result.referenceLabel
@@ -134,9 +211,14 @@ private fun bindProgestogenModule() {
     }
 
     elements.drug.addEventListener("change", { _: Event -> render() })
-    elements.dose.addEventListener("change", { _: Event -> render() })
-    elements.interval.addEventListener("change", { _: Event -> render() })
-    elements.days.addEventListener("change", { _: Event -> render() })
+    listOf(elements.dose, elements.interval, elements.days).forEach { input ->
+        input.addEventListener("input", { _: Event ->
+            if (input.value.toDoubleOrNull()?.isFinite() == true) render()
+        })
+        input.addEventListener("change", { _: Event -> render() })
+    }
+    elements.threshold.addEventListener("change", { _: Event -> render() })
+    elements.lastDoseAt.addEventListener("change", { _: Event -> render() })
     window.addEventListener("resize", { _: Event ->
         latest?.let { drawProgestogenChart(elements.canvas, it) }
     })
@@ -152,11 +234,19 @@ private fun findProgestogenElements(): ProgestogenElements? {
         dose = element("progestogenDose") as? HTMLInputElement ?: return null,
         interval = element("progestogenInterval") as? HTMLInputElement ?: return null,
         days = element("progestogenDays") as? HTMLInputElement ?: return null,
+        threshold = element("pgCoverageThreshold") as? HTMLSelectElement ?: return null,
+        lastDoseAt = element("pgLastDoseAt") as? HTMLInputElement ?: return null,
         endpoint = element("pgGnrhEffect") ?: return null,
         peak = element("pgGnrhPeak") ?: return null,
         occupancy = element("pgPrOccupancy") ?: return null,
         activity = element("pgGnrhActivity") ?: return null,
         concentration = element("pgGnrhConcentration") ?: return null,
+        peakConcentration = element("pgPeakConcentration") ?: return null,
+        dailyExposure = element("pgDailyExposure") ?: return null,
+        coverageDuration = element("pgCoverageDuration") ?: return null,
+        coverageDate = element("pgCoverageDate") ?: return null,
+        coverageStatus = element("pgCoverageStatus") ?: return null,
+        coverageFill = element("pgCoverageFill") ?: return null,
         boundary = element("pgGnrhDomain") ?: return null,
         reference = element("pgGnrhReference") as? HTMLAnchorElement ?: return null,
         canvas = element("pgGnrhChart") as? HTMLCanvasElement ?: return null,
@@ -194,6 +284,44 @@ private fun concentrationNgMl(value: Double): String = when {
     value < 0.01 -> "<0.01 ng/mL"
     value < 10.0 -> "${(value * 100.0).roundToInt() / 100.0} ng/mL"
     else -> "${(value * 10.0).roundToInt() / 10.0} ng/mL"
+}
+
+private fun boundedInput(value: String, fallback: Double, minimum: Double, maximum: Double): Double =
+    value.toDoubleOrNull()?.takeIf { it.isFinite() }?.coerceIn(minimum, maximum) ?: fallback
+
+private fun duration(hours: Double): String {
+    val wholeMinutes = (hours.coerceAtLeast(0.0) * 60.0).roundToInt()
+    val days = wholeMinutes / (24 * 60)
+    val remainingHours = (wholeMinutes % (24 * 60)) / 60
+    val minutes = wholeMinutes % 60
+    return when {
+        days > 0 -> "${days}d ${remainingHours}h"
+        remainingHours > 0 -> "${remainingHours}h ${minutes}m"
+        else -> "${minutes}m"
+    }
+}
+
+private fun projectedDateTime(
+    dateTimeLocal: String,
+    delayHours: Double,
+    reachesThreshold: Boolean,
+): String = when {
+    !reachesThreshold -> "无覆盖截止时刻：所选阈值未被达到。"
+    dateTimeLocal.isBlank() -> "填写末次给药时间即可映射到日历。"
+    else -> {
+        val start = Date(dateTimeLocal).getTime()
+        if (!start.isFinite()) {
+            "末次给药时间格式无效。"
+        } else {
+            "预计 ${Date(start + delayHours * 3_600_000.0).toLocaleString()}"
+        }
+    }
+}
+
+private fun currentLocalDateTimeValue(): String {
+    val now = Date()
+    val local = Date(now.getTime() - now.getTimezoneOffset().toDouble() * 60_000.0)
+    return local.toISOString().take(16)
 }
 
 private fun Double.displayNumber(): String =

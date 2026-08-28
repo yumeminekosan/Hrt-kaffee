@@ -25,12 +25,55 @@ class ProgestogenGnRHModelTest {
     @Test
     fun oralP4ProfileTracksTheLabelCmaxAndShowsDelayedFeedback() {
         val result = model.simulate(
-            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 100.0, 24.0, 1),
+            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 100.0, 24.0, 5),
         )
         val peakConcentration = result.curve.maxOf { it.plasmaConcentrationNgPerMl }
         assertTrue(peakConcentration in 14.0..21.0)
         assertTrue(result.peakPrOccupancyFraction > result.peakGnRHPulseSuppressionFraction)
-        assertTrue(result.peakGnRHPulseSuppressionFraction in 0.0..0.25)
+        assertTrue(result.peakGnRHPulseSuppressionFraction in 0.0..0.55)
+    }
+
+    @Test
+    fun p4ExposureAndCoverageWindowRespondToDoseAndRemainPhysical() {
+        val lowDose = model.simulate(
+            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 100.0, 24.0, 14),
+        )
+        val highDose = model.simulate(
+            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 400.0, 24.0, 14),
+        )
+        assertTrue(highDose.peakPrOccupancyFraction > lowDose.peakPrOccupancyFraction)
+        assertTrue(highDose.peakGnRHPulseSuppressionFraction > lowDose.peakGnRHPulseSuppressionFraction)
+
+        val estimate = model.estimateCoverageAfterLastDose(
+            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 100.0, 24.0, 14),
+            0.10,
+        )
+        assertTrue(estimate.reachesThreshold)
+        assertTrue(estimate.peakSuppressionAfterLastDoseFraction in 0.0..1.0)
+        assertTrue(estimate.timeUntilFinalBelowThresholdHours in 0.0..estimate.searchHorizonHours)
+
+        val zeroDose = model.estimateCoverageAfterLastDose(
+            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 0.0, 24.0, 14),
+            0.10,
+        )
+        assertFalse(zeroDose.reachesThreshold)
+        assertTrue(zeroDose.timeUntilFinalBelowThresholdHours == 0.0)
+    }
+
+    @Test
+    fun inputCeilingStaysFiniteAndIsMarkedAsAnExtrapolation() {
+        val result = model.simulate(
+            ProgestogenGnRHRegimen(ProgestogenLigand.PROGESTERONE, 500.0, 4.0, 365),
+        )
+        assertFalse(result.regimen.isPopulationReferenceDomain)
+        assertTrue(result.curve.all { point ->
+            point.plasmaConcentrationNm.isFinite() &&
+                point.plasmaConcentrationNgPerMl.isFinite() &&
+                point.prOccupancyFraction.isFinite() &&
+                point.gnrhPulseSuppressionFraction.isFinite() &&
+                point.prOccupancyFraction in 0.0..1.0 &&
+                point.gnrhPulseSuppressionFraction in 0.0..1.0
+        })
     }
 
     @Test
