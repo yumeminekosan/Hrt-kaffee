@@ -320,3 +320,28 @@ C₁(reactions) --∂₁=S--> C₀(species) --∂₀=0--> 0.
 ```
 
 The left kernel of `S` gives conservation laws and the right kernel gives reaction cycles, both with exact rationals. The generic simplex implementation also checks the nontrivial identity `∂²=0`; Kotlin implements these objects but is not itself a chain group or a face map.
+
+## 10. Transdermal estradiol finite-volume projection
+
+For stratum-corneum, viable-epidermis and dermal-depot amounts, the browser model uses
+
+```text
+dA_SC/dt = J_patch - k_SC A_SC
+dA_VE/dt = k_SC A_SC - k_VE A_VE
+dA_D/dt  = k_VE A_VE - k_D A_D
+J_dermis  = k_D A_D / area.
+```
+
+Each transfer coefficient stands for a finite-volume reduction of `D_i K_i / h_i²`
+after interface partitioning; it is not claimed as a universal tissue constant. Patch
+replacement is a scheduled jump. Dermal output drives central/peripheral population PK.
+Free estradiol solves the carrier mass balance
+
+```text
+E_total = E_free + A_total E_free/(K_A + E_free)
+                   + S_total E_free/(K_S + E_free),
+```
+
+and receptor engagement is `E_tissue/(K_d + E_tissue)`. Occupancy and clinical efficacy
+remain distinct. RK4 integrates smooth inter-event dynamics; stochastic Heun and spatial
+diffusion remain audited extensions, never numerical-error repairs.

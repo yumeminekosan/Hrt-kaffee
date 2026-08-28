@@ -27,9 +27,107 @@ private data class FiveArElements(
     val canvas: HTMLCanvasElement,
 )
 
+private data class TransdermalElements(
+    val panel: HTMLElement,
+    val delivery: HTMLSelectElement,
+    val area: HTMLInputElement,
+    val interval: HTMLInputElement,
+    val days: HTMLInputElement,
+    val site: HTMLSelectElement,
+    val total: HTMLElement,
+    val free: HTMLElement,
+    val flux: HTMLElement,
+    val depot: HTMLElement,
+    val erAlpha: HTMLElement,
+    val erBeta: HTMLElement,
+    val gper: HTMLElement,
+    val exposure: HTMLElement,
+    val boundary: HTMLElement,
+    val canvas: HTMLCanvasElement,
+)
+
 fun main() {
     bindFiveArModule()
+    bindTransdermalEstradiolModule()
     bindProgestogenModule()
+}
+
+private fun bindTransdermalEstradiolModule() {
+    val elements = findTransdermalElements() ?: return
+    var latest: TransdermalEstradiolProjection? = null
+
+    fun render() {
+        val delivery = boundedInput(elements.delivery.value, 50.0, 0.0, 200.0)
+        val labelledArea = EmbeddedTransdermalEstradiolModel.labelledAreaCm2(delivery)
+        if (elements.area.getAttribute("data-automatic") != "false") {
+            elements.area.value = labelledArea.displayNumber()
+        }
+        val area = boundedInput(elements.area.value, labelledArea, 1.0, 40.0)
+        val interval = boundedInput(elements.interval.value, 84.0, 24.0, 168.0)
+        val days = boundedInput(elements.days.value, 14.0, 1.0, 365.0).roundToInt()
+        val siteFactor = boundedInput(elements.site.value, 1.0, 0.5, 1.5)
+        elements.panel.setAttribute("aria-busy", "true")
+        val result = EmbeddedTransdermalEstradiolModel.simulate(
+            TransdermalEstradiolInput(delivery, area, interval, days, siteFactor),
+        )
+        latest = result
+        elements.total.textContent = "${result.endpoint.totalEstradiolPgMl.oneDecimal()} pg/mL"
+        elements.free.textContent = "${result.endpoint.freeEstradiolPgMl.twoDecimals()} pg/mL"
+        elements.flux.textContent = "${result.endpoint.dermalFluxMicrogramsPerCm2Hour.threeDecimals()} μg/cm²/h"
+        elements.depot.textContent = "${result.endpoint.skinDepotMicrograms.twoDecimals()} μg"
+        elements.erAlpha.textContent = percent(result.endpoint.erAlphaOccupancyFraction)
+        elements.erBeta.textContent = percent(result.endpoint.erBetaOccupancyFraction)
+        elements.gper.textContent = percent(result.endpoint.gperEngagementFraction)
+        elements.exposure.textContent =
+            "Cmax ${result.cMaxPgMl.oneDecimal()} · Cavg ${result.cAverageLastIntervalPgMl.oneDecimal()} · " +
+                "absorbed ${result.cumulativeAbsorbedMicrograms.oneDecimal()} μg · ${result.patchChanges} patches"
+        elements.boundary.textContent = result.boundaryMessage
+        elements.boundary.classList.toggle("extrapolated", !result.isReferenceDomain)
+        drawTransdermalChart(elements.canvas, result)
+        elements.panel.setAttribute("aria-busy", "false")
+    }
+
+    elements.delivery.addEventListener("change", { _: Event ->
+        elements.area.setAttribute("data-automatic", "true")
+        render()
+    })
+    elements.area.addEventListener("input", { _: Event ->
+        elements.area.setAttribute("data-automatic", "false")
+        if (elements.area.value.toDoubleOrNull()?.isFinite() == true) render()
+    })
+    listOf(elements.interval, elements.days).forEach { input ->
+        input.addEventListener("input", { _: Event ->
+            if (input.value.toDoubleOrNull()?.isFinite() == true) render()
+        })
+        input.addEventListener("change", { _: Event -> render() })
+    }
+    elements.site.addEventListener("change", { _: Event -> render() })
+    window.addEventListener("resize", { _: Event ->
+        latest?.let { drawTransdermalChart(elements.canvas, it) }
+    })
+    render()
+}
+
+private fun findTransdermalElements(): TransdermalElements? {
+    fun element(id: String): HTMLElement? = document.getElementById(id) as? HTMLElement
+    return TransdermalElements(
+        panel = element("transdermalEstradiolModule") ?: return null,
+        delivery = element("tdE2Delivery") as? HTMLSelectElement ?: return null,
+        area = element("tdE2Area") as? HTMLInputElement ?: return null,
+        interval = element("tdE2Interval") as? HTMLInputElement ?: return null,
+        days = element("tdE2Days") as? HTMLInputElement ?: return null,
+        site = element("tdE2Site") as? HTMLSelectElement ?: return null,
+        total = element("tdE2Total") ?: return null,
+        free = element("tdE2Free") ?: return null,
+        flux = element("tdE2Flux") ?: return null,
+        depot = element("tdE2Depot") ?: return null,
+        erAlpha = element("tdE2ErAlpha") ?: return null,
+        erBeta = element("tdE2ErBeta") ?: return null,
+        gper = element("tdE2Gper") ?: return null,
+        exposure = element("tdE2Exposure") ?: return null,
+        boundary = element("tdE2Domain") ?: return null,
+        canvas = element("tdE2Chart") as? HTMLCanvasElement ?: return null,
+    )
 }
 
 private fun bindFiveArModule() {
@@ -327,6 +425,10 @@ private fun currentLocalDateTimeValue(): String {
 private fun Double.displayNumber(): String =
     if (this == roundToInt().toDouble()) roundToInt().toString() else toString()
 
+private fun Double.oneDecimal(): String = ((this * 10.0).roundToInt() / 10.0).toString()
+private fun Double.twoDecimals(): String = ((this * 100.0).roundToInt() / 100.0).toString()
+private fun Double.threeDecimals(): String = ((this * 1_000.0).roundToInt() / 1_000.0).toString()
+
 private fun drawChart(canvas: HTMLCanvasElement, result: FiveArProjection) {
     val width = canvas.clientWidth.coerceAtLeast(260)
     val height = canvas.clientHeight.coerceAtLeast(220)
@@ -426,4 +528,57 @@ private fun drawProgestogenChart(
     plot("#4ac4c4", ProgestogenFeedbackCurvePoint::gnrhPulseSuppressionFraction)
     plot("#f6c857", ProgestogenFeedbackCurvePoint::prOccupancyFraction)
     plot("#ff6b5f", ProgestogenFeedbackCurvePoint::gnrhPulseActivityFraction)
+}
+
+private fun drawTransdermalChart(
+    canvas: HTMLCanvasElement,
+    result: TransdermalEstradiolProjection,
+) {
+    val width = canvas.clientWidth.coerceAtLeast(260)
+    val height = canvas.clientHeight.coerceAtLeast(240)
+    if (canvas.width != width) canvas.width = width
+    if (canvas.height != height) canvas.height = height
+    val context = canvas.getContext("2d") as? CanvasRenderingContext2D ?: return
+    val left = 43.0
+    val right = 12.0
+    val top = 14.0
+    val bottom = 28.0
+    val plotWidth = width - left - right
+    val plotHeight = height - top - bottom
+    val horizon = result.curve.last().timeHours.coerceAtLeast(1.0)
+    val concentrationCeiling = (result.cMaxPgMl * 1.15).coerceAtLeast(25.0)
+
+    context.clearRect(0.0, 0.0, width.toDouble(), height.toDouble())
+    context.fillStyle = "#080b11"
+    context.fillRect(0.0, 0.0, width.toDouble(), height.toDouble())
+    context.font = "10px JetBrains Mono, monospace"
+    context.strokeStyle = "#252b35"
+    context.fillStyle = "#737b88"
+    context.lineWidth = 1.0
+    for (index in 0..4) {
+        val fraction = index / 4.0
+        val y = top + plotHeight * (1.0 - fraction)
+        context.beginPath()
+        context.moveTo(left, y)
+        context.lineTo(left + plotWidth, y)
+        context.stroke()
+        context.fillText("${(concentrationCeiling * fraction).roundToInt()}", 3.0, y + 3.0)
+    }
+    context.fillText("0d", left, height - 8.0)
+    context.fillText("${result.input.days}d", left + plotWidth - 24.0, height - 8.0)
+
+    fun plot(color: String, selector: (TransdermalEstradiolPoint) -> Double) {
+        context.strokeStyle = color
+        context.lineWidth = 1.9
+        context.beginPath()
+        result.curve.forEachIndexed { index, point ->
+            val x = left + point.timeHours / horizon * plotWidth
+            val y = top + (1.0 - selector(point).coerceIn(0.0, 1.0)) * plotHeight
+            if (index == 0) context.moveTo(x, y) else context.lineTo(x, y)
+        }
+        context.stroke()
+    }
+    plot("#54d6d2") { it.totalEstradiolPgMl / concentrationCeiling }
+    plot("#f5c75b", TransdermalEstradiolPoint::erAlphaOccupancyFraction)
+    plot("#ff6f91", TransdermalEstradiolPoint::erBetaOccupancyFraction)
 }
