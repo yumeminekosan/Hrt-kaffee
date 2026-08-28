@@ -21,6 +21,6 @@ class TransdermalEstradiolFlowIntegrationTest {
     fun everyMicroscopicChannelHasItsDeclaredReverse() {
         val network = TransdermalEstradiolRigorousPipeline.prepare().network
         val ids = network.reactions.map { it.id }.toSet()
-        assertTrue(network.reactions.all { reaction -> reaction.reverseId in ids })
+        assertTrue(network.reactions.all { reaction -> reaction.reverseReactionId in ids })
     }
 }
