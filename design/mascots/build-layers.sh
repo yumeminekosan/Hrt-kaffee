@@ -13,6 +13,9 @@ trap 'rm -rf "$work_dir"' EXIT
 
 web_root="$project_root/public/mascots/cats"
 design_root="$project_root/design/mascots"
+pixel_master=96
+palette_limit=32
+outline_color='#170f2d'
 mkdir -p "$web_root" "$design_root/psd" "$design_root/originals" "$design_root/sheets"
 
 for sheet in a b c d; do
@@ -66,10 +69,24 @@ for spec in "${specs[@]}"; do
   cell_size=$((sheet_width / 2))
   offset_x=$((cell_x * cell_size))
   offset_y=$((cell_y * cell_size))
+  master_png="$work_dir/$slug-master.png"
+  outline_mask="$work_dir/$slug-outline-mask.png"
+  outline_png="$work_dir/$slug-outline.png"
+  base_png="$work_dir/$slug-base.png"
   staged_source="$work_dir/staged-source-$slug.png"
+
+  # Preserve the generated composition but rebuild it as a deliberately
+  # low-resolution 32-bit sprite.  The one-master-pixel outer contour becomes
+  # a stepped four-to-six CSS-pixel outline after the final nearest-neighbour
+  # export, making every character silhouette readable at small module sizes.
   convert "$source_dir/sheet-$sheet.png" -crop "${cell_size}x${cell_size}+$offset_x+$offset_y" +repage \
-    -filter point -resize '128x128!' +dither -colors 64 \
-    -filter point -resize '512x512!' "PNG32:$staged_source"
+    -filter point -resize "${pixel_master}x${pixel_master}!" +dither -colors "$palette_limit" "PNG32:$master_png"
+  convert "$master_png" -alpha extract -morphology Dilate 'Octagon:1' \
+    -filter point -resize '512x512!' "$outline_mask"
+  convert -size 512x512 "xc:$outline_color" "$outline_mask" \
+    -alpha off -compose CopyOpacity -composite "PNG32:$outline_png"
+  convert "$master_png" -filter point -resize '512x512!' "PNG32:$base_png"
+  convert "$outline_png" "$base_png" -compose over -composite "PNG32:$staged_source"
   mv "$staged_source" "$source_png"
 
   head_mask="$work_dir/$slug-head-mask.png"

@@ -5,9 +5,11 @@ Sixteen module cats are kept in two synchronized forms:
 - `psd/<module>.psd`: layered 512×512 source for further rigging.
 - `../../public/mascots/cats/<module>/`: transparent web layers used by the page.
 
-The pixel direction is 64-bit-era, hard-edged sprite art with
-menhera-inspired black/pink/lavender accessories. Every source is reduced to a
-128×128 pixel master with a 64-colour palette before nearest-neighbour export.
+The pixel direction is deliberately chunky 32-bit-era sprite art with
+menhera-inspired black/pink/lavender accessories. Each original character,
+pose and prop is preserved, then reduced to a 96×96 pixel master with a
+32-colour palette and a stepped deep-indigo contour before nearest-neighbour
+export.
 The PSD layer order is
 `body`, `tail`, `head`. The three layers partition the
 original sprite, so their neutral transforms reconstruct the source exactly.
