@@ -58,6 +58,8 @@ jobs:
           test -f _site/kinetics/hrt-kaffee-kinetics.js
           grep -q 'HRT<span>-KAFFEE</span>' _site/index.html
           grep -q 'id="fiveArModule"' _site/index.html
+          grep -q 'id="transdermalEstradiolModule"' _site/index.html
+          grep -q 'id="tdE2Chart"' _site/index.html
           grep -q 'id="pgGnrhResults"' _site/index.html
           grep -q 'id="pgCoverageDuration"' _site/index.html
           grep -q 'src="kinetics/hrt-kaffee-kinetics.js"' _site/index.html

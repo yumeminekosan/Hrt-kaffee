@@ -58,6 +58,14 @@ test. The original progestogen panel renders only regimen inputs, PR/GnRH observ
 selected-threshold post-last-dose feedback window; the window is not rendered as a personal bodily-
 change or subjective-effect endpoint.
 
+`TransdermalEstradiolMicroscopicNetwork` uses one reversible table for
+`PATCH_E2 ⇄ SC_E2 ⇄ VE_E2 ⇄ DERMIS_E2 ⇄ CENTRAL_E2 ⇄ PERIPHERAL_E2`, elimination,
+SHBG binding and ER binding. Scheduled add/remove/replace operations remain external
+jumps rather than being hidden in a smooth ODE. The browser finite-volume projection
+uses RK4 between events, solves SHBG/albumin free ligand by mass balance, and reports
+receptor occupancy separately from clinical effect. Vivelle-Dot supplies population
+delivery/area/PK anchors; GPER is explicitly a structural engagement proxy.
+
 | Requested node or arrow | Status | Kotlin realization and check | Honest boundary |
 |---|---|---|---|
 | Thermal de Broglie scale → quantum binding calibration → CTMC | implemented boundary; model input open | `ThermalDeBroglie`, `QuantumBindingBridge`, and `ExactQuantumRateCalibration`; inverse-square-root, rate-ratio, provenance, and named-reaction tests | `λ_th` alone never determines `ΔG_bind`, `ΔG‡`, or a rate multiplier; those require an audited path-integral/quantum-chemistry or experimental input |
