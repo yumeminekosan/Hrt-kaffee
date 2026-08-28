@@ -68,6 +68,7 @@ for spec in "${specs[@]}"; do
   offset_y=$((cell_y * cell_size))
   staged_source="$work_dir/staged-source-$slug.png"
   convert "$source_dir/sheet-$sheet.png" -crop "${cell_size}x${cell_size}+$offset_x+$offset_y" +repage \
+    -filter point -resize '128x128!' +dither -colors 64 \
     -filter point -resize '512x512!' "PNG32:$staged_source"
   mv "$staged_source" "$source_png"
 
