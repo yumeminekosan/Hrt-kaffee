@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "canvas": [512, 512],
   "pixelMaster": [96, 96],
   "paletteLimit": 32,
@@ -13,6 +13,7 @@
   "cats": {
     "presets": "Quick Presets / 三花猫",
     "five-ar": "5αR Kinetics / 银虎斑猫",
+    "bicalutamide": "Bicalutamide PK–AR / 紫灰猫",
     "transdermal-e2": "Transdermal E2 / 奶牛猫",
     "drug-settings": "Drug Settings / 橘猫",
     "model-selection": "Model Selection / 暹罗猫",

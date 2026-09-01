@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  echo "usage: $0 /path/to/cat-assets" >&2
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "usage: $0 /path/to/cat-assets [module-slug]" >&2
   exit 2
 fi
 
 source_dir="$1"
+only_slug="${2:-}"
 project_root="$(cd "$(dirname "$0")/../.." && pwd)"
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
@@ -18,7 +19,7 @@ palette_limit=32
 outline_color='#170f2d'
 mkdir -p "$web_root" "$design_root/psd" "$design_root/originals" "$design_root/sheets"
 
-for sheet in a b c d; do
+for sheet in a b c d e; do
   test -f "$source_dir/sheet-$sheet.png"
   cp "$source_dir/sheet-$sheet.png" "$design_root/sheets/sheet-$sheet.png"
 done
@@ -41,6 +42,7 @@ specs=(
   'd|1|0|time-curves|ellipse 266,156 154,144 0,360|polygon 392,20 512,20 512,326 400,326 372,170'
   'd|0|1|event-log|ellipse 182,190 154,144 0,360|polygon 280,160 512,160 512,438 304,438 276,270'
   'd|1|1|research-footer|ellipse 252,178 160,152 0,360|polygon 372,124 512,124 512,430 384,430 342,260'
+  'e|0|0|bicalutamide|ellipse 218,152 164,150 0,360|polygon 370,24 512,24 512,512 390,512 354,308 356,156'
 )
 
 make_layer() {
@@ -56,8 +58,12 @@ make_layer() {
   mv "$staged_png" "$output_png"
 }
 
+built=0
 for spec in "${specs[@]}"; do
   IFS='|' read -r sheet cell_x cell_y slug head_draw tail_draw <<< "$spec"
+  if [[ -n "$only_slug" && "$slug" != "$only_slug" ]]; then
+    continue
+  fi
   source_png="$design_root/originals/$slug.png"
   cat_dir="$web_root/$slug"
   mkdir -p "$cat_dir"
@@ -112,6 +118,11 @@ for spec in "${specs[@]}"; do
     \( "$cat_dir/head.png" -set label head \) \
     "$staged_psd"
   mv "$staged_psd" "$design_root/psd/$slug.psd"
+  built=$((built + 1))
 done
 
-echo "Built ${#specs[@]} layered cats."
+if [[ -n "$only_slug" && "$built" -eq 0 ]]; then
+  echo "unknown module slug: $only_slug" >&2
+  exit 2
+fi
+echo "Built $built layered cats."

@@ -27,6 +27,31 @@ private data class FiveArElements(
     val canvas: HTMLCanvasElement,
 )
 
+private data class BicalutamideElements(
+    val panel: HTMLElement,
+    val dose: HTMLInputElement,
+    val interval: HTMLInputElement,
+    val days: HTMLInputElement,
+    val testosterone: HTMLInputElement,
+    val dht: HTMLInputElement,
+    val tissuePartition: HTMLInputElement,
+    val feedback: HTMLSelectElement,
+    val arContext: HTMLSelectElement,
+    val suppression: HTMLElement,
+    val relativeActivation: HTMLElement,
+    val totalConcentration: HTMLElement,
+    val unboundConcentration: HTMLElement,
+    val tissueConcentration: HTMLElement,
+    val antagonistOccupancy: HTMLElement,
+    val androgenOccupancy: HTMLElement,
+    val androgenMultiplier: HTMLElement,
+    val stressRange: HTMLElement,
+    val calibration: HTMLElement,
+    val boundary: HTMLElement,
+    val reference: HTMLAnchorElement,
+    val canvas: HTMLCanvasElement,
+)
+
 private data class TransdermalElements(
     val panel: HTMLElement,
     val delivery: HTMLSelectElement,
@@ -48,8 +73,120 @@ private data class TransdermalElements(
 
 fun main() {
     bindFiveArModule()
+    bindBicalutamideModule()
     bindTransdermalEstradiolModule()
     bindProgestogenModule()
+}
+
+private fun bindBicalutamideModule() {
+    val elements = findBicalutamideElements() ?: return
+    var latest: EmbeddedBicalutamideProjection? = null
+
+    fun render() {
+        val input = EmbeddedBicalutamideInput(
+            doseMg = boundedInput(elements.dose.value, 50.0, 0.0, 200.0),
+            doseIntervalHours = boundedInput(elements.interval.value, 24.0, 6.0, 168.0),
+            days = boundedInput(elements.days.value, 42.0, 1.0, 365.0).roundToInt(),
+            freeTissueTestosteroneNm = boundedInput(
+                elements.testosterone.value,
+                EmbeddedBicalutamideModel.TESTOSTERONE_KD_NM,
+                0.0001,
+                20.0,
+            ),
+            freeTissueDhtNm = boundedInput(
+                elements.dht.value,
+                EmbeddedBicalutamideModel.DHT_KD_NM,
+                0.00001,
+                5.0,
+            ),
+            tissueUnboundPartition = boundedInput(
+                elements.tissuePartition.value,
+                1.0,
+                0.05,
+                5.0,
+            ),
+            hpgFeedbackGain = boundedInput(elements.feedback.value, 0.0, 0.0, 2.0),
+            arContext = EmbeddedBicalutamideArContext.fromWireId(elements.arContext.value),
+        )
+        elements.panel.setAttribute("aria-busy", "true")
+        val result = EmbeddedBicalutamideModel.simulate(input)
+        latest = result
+        val endpoint = result.endpoint
+        elements.suppression.textContent = signedPercent(endpoint.directSuppressionFraction)
+        elements.relativeActivation.textContent = ratioPercent(endpoint.relativeActivationVsPretreatment)
+        elements.totalConcentration.textContent = "${endpoint.activeRTotalUgMl.twoDecimals()} μg/mL"
+        elements.unboundConcentration.textContent = concentration(endpoint.activeRUnboundPlasmaNm)
+        elements.tissueConcentration.textContent = concentration(endpoint.activeRTissueNm)
+        elements.antagonistOccupancy.textContent = percent(endpoint.bicalutamideOccupancyFraction)
+        elements.androgenOccupancy.textContent = percent(
+            endpoint.testosteroneOccupancyFraction + endpoint.dhtOccupancyFraction,
+        )
+        elements.androgenMultiplier.textContent = "${endpoint.androgenMultiplier.twoDecimals()}×"
+        elements.stressRange.textContent =
+            "${signedPercent(result.stressRange.lowerDirectSuppressionFraction)} – " +
+                signedPercent(result.stressRange.upperDirectSuppressionFraction)
+        val calibration = result.calibration
+        elements.calibration.textContent =
+            "single ${calibration.singleDosePeakUgMl.threeDecimals()} μg/mL @ " +
+                "${calibration.singleDosePeakTimeHours.oneDecimal()} h · " +
+                "Css ${calibration.predictedSteadyStateMeanUgMl.twoDecimals()} vs " +
+                "${calibration.labelSteadyStateMeanUgMl.threeDecimals()} μg/mL · " +
+                "|z| ${calibration.steadyStateStandardizedResidual.twoDecimals()}"
+        elements.boundary.textContent = result.boundaryMessage
+        elements.boundary.classList.toggle("extrapolated", !result.isPkReferenceRegimen)
+        elements.reference.textContent = "FDA CASODEX LABEL · PK / MOA ANCHOR"
+        elements.reference.href = EmbeddedBicalutamideModel.FDA_LABEL_URL
+        drawBicalutamideChart(elements.canvas, result)
+        elements.panel.setAttribute("aria-busy", "false")
+    }
+
+    listOf(
+        elements.dose,
+        elements.interval,
+        elements.days,
+        elements.testosterone,
+        elements.dht,
+        elements.tissuePartition,
+    ).forEach { input ->
+        input.addEventListener("input", { _: Event ->
+            if (input.value.toDoubleOrNull()?.isFinite() == true) render()
+        })
+        input.addEventListener("change", { _: Event -> render() })
+    }
+    elements.feedback.addEventListener("change", { _: Event -> render() })
+    elements.arContext.addEventListener("change", { _: Event -> render() })
+    window.addEventListener("resize", { _: Event ->
+        latest?.let { drawBicalutamideChart(elements.canvas, it) }
+    })
+    render()
+}
+
+private fun findBicalutamideElements(): BicalutamideElements? {
+    fun element(id: String): HTMLElement? = document.getElementById(id) as? HTMLElement
+    return BicalutamideElements(
+        panel = element("bicalutamideModule") ?: return null,
+        dose = element("bicDose") as? HTMLInputElement ?: return null,
+        interval = element("bicInterval") as? HTMLInputElement ?: return null,
+        days = element("bicDays") as? HTMLInputElement ?: return null,
+        testosterone = element("bicTestosterone") as? HTMLInputElement ?: return null,
+        dht = element("bicDht") as? HTMLInputElement ?: return null,
+        tissuePartition = element("bicKpuu") as? HTMLInputElement ?: return null,
+        feedback = element("bicFeedback") as? HTMLSelectElement ?: return null,
+        arContext = element("bicArContext") as? HTMLSelectElement ?: return null,
+        suppression = element("bicSuppression") ?: return null,
+        relativeActivation = element("bicRelativeActivation") ?: return null,
+        totalConcentration = element("bicTotalConcentration") ?: return null,
+        unboundConcentration = element("bicUnboundConcentration") ?: return null,
+        tissueConcentration = element("bicTissueConcentration") ?: return null,
+        antagonistOccupancy = element("bicAntagonistOccupancy") ?: return null,
+        androgenOccupancy = element("bicAndrogenOccupancy") ?: return null,
+        androgenMultiplier = element("bicAndrogenMultiplier") ?: return null,
+        stressRange = element("bicStressRange") ?: return null,
+        calibration = element("bicCalibration") ?: return null,
+        boundary = element("bicDomain") ?: return null,
+        reference = element("bicReference") as? HTMLAnchorElement ?: return null,
+        canvas = element("bicChart") as? HTMLCanvasElement ?: return null,
+    )
 }
 
 private fun bindTransdermalEstradiolModule() {
@@ -372,6 +509,12 @@ private fun findElements(): FiveArElements? {
 private fun percent(fraction: Double): String =
     "${(fraction.coerceIn(0.0, 1.0) * 100.0).roundToInt()}%"
 
+private fun signedPercent(fraction: Double): String =
+    "${(fraction * 100.0).roundToInt()}%"
+
+private fun ratioPercent(fraction: Double): String =
+    "${(fraction * 100.0).roundToInt()}%"
+
 private fun concentration(valueNm: Double): String = when {
     valueNm < 0.01 -> "<0.01 nM"
     valueNm < 10.0 -> "${(valueNm * 100.0).roundToInt() / 100.0} nM"
@@ -476,6 +619,67 @@ private fun drawChart(canvas: HTMLCanvasElement, result: FiveArProjection) {
     plot("#4ac4c4", FiveArCurvePoint::dhtSuppressionFraction)
     plot("#f6c857", FiveArCurvePoint::type1InhibitionFraction)
     plot("#ff6b5f", FiveArCurvePoint::type2InhibitionFraction)
+}
+
+private fun drawBicalutamideChart(
+    canvas: HTMLCanvasElement,
+    result: EmbeddedBicalutamideProjection,
+) {
+    val width = canvas.clientWidth.coerceAtLeast(260)
+    val height = canvas.clientHeight.coerceAtLeast(240)
+    if (canvas.width != width) canvas.width = width
+    if (canvas.height != height) canvas.height = height
+    val context = canvas.getContext("2d") as? CanvasRenderingContext2D ?: return
+    val left = 43.0
+    val right = 12.0
+    val top = 14.0
+    val bottom = 28.0
+    val plotWidth = width - left - right
+    val plotHeight = height - top - bottom
+    val horizon = result.curve.last().timeHours.coerceAtLeast(1.0)
+    val minimum = minOf(0.0, result.curve.minOf { it.directSuppressionFraction })
+    val maximum = maxOf(
+        1.0,
+        result.curve.maxOf { it.relativeActivationVsPretreatment },
+        result.curve.maxOf { it.bicalutamideOccupancyFraction },
+    )
+    val span = (maximum - minimum).coerceAtLeast(1.0)
+
+    context.clearRect(0.0, 0.0, width.toDouble(), height.toDouble())
+    context.fillStyle = "#080b11"
+    context.fillRect(0.0, 0.0, width.toDouble(), height.toDouble())
+    context.font = "10px JetBrains Mono, monospace"
+    context.strokeStyle = "#252b35"
+    context.fillStyle = "#737b88"
+    context.lineWidth = 1.0
+    for (index in 0..4) {
+        val fraction = index / 4.0
+        val value = minimum + span * fraction
+        val y = top + plotHeight * (1.0 - fraction)
+        context.beginPath()
+        context.moveTo(left, y)
+        context.lineTo(left + plotWidth, y)
+        context.stroke()
+        context.fillText("${(value * 100.0).roundToInt()}%", 3.0, y + 3.0)
+    }
+    context.fillText("0d", left, height - 8.0)
+    context.fillText("${result.input.days}d", left + plotWidth - 24.0, height - 8.0)
+
+    fun plot(color: String, selector: (EmbeddedBicalutamidePoint) -> Double) {
+        context.strokeStyle = color
+        context.lineWidth = 1.9
+        context.beginPath()
+        result.curve.forEachIndexed { index, point ->
+            val x = left + point.timeHours / horizon * plotWidth
+            val normalized = (selector(point) - minimum) / span
+            val y = top + (1.0 - normalized) * plotHeight
+            if (index == 0) context.moveTo(x, y) else context.lineTo(x, y)
+        }
+        context.stroke()
+    }
+    plot("#54d6d2", EmbeddedBicalutamidePoint::directSuppressionFraction)
+    plot("#f5c75b", EmbeddedBicalutamidePoint::bicalutamideOccupancyFraction)
+    plot("#ff6f91", EmbeddedBicalutamidePoint::relativeActivationVsPretreatment)
 }
 
 private fun drawProgestogenChart(

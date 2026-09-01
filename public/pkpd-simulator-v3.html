@@ -467,6 +467,32 @@
         .target-effect-legend { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.4rem; color: var(--text-sub); font-size: 0.54rem; }
         .target-effect-legend span::before { content: ''; display: inline-block; width: 12px; height: 2px; margin-right: 0.3rem; vertical-align: middle; background: var(--legend-color); }
         .target-effect-domain.extrapolated { color: var(--accent-red); }
+        .bic-module {
+            border-color: rgba(168, 114, 255, 0.42);
+            background: linear-gradient(135deg, rgba(168, 114, 255, 0.06), transparent 42%);
+        }
+        .bic-module .panel-badge { background: #a872ff; }
+        .bic-module .target-effect-metrics {
+            background: rgba(168, 114, 255, 0.22);
+            border-color: rgba(168, 114, 255, 0.22);
+        }
+        .bic-evidence {
+            margin-top: 0.55rem;
+            border: 1px solid rgba(168, 114, 255, 0.2);
+            background: rgba(10, 12, 16, 0.64);
+            color: var(--text-sub);
+            font-size: 0.57rem;
+            line-height: 1.55;
+        }
+        .bic-evidence summary {
+            padding: 0.45rem 0.55rem;
+            color: #c9a9ff;
+            cursor: pointer;
+            letter-spacing: 0.06em;
+        }
+        .bic-evidence-body { padding: 0 0.55rem 0.55rem; }
+        .bic-evidence-body p + p { margin-top: 0.35rem; }
+        .bic-evidence a { color: var(--accent-cyan); text-decoration: none; }
 
         /* ============================================
            PROGESTOGEN MODULE - RHODES ISLAND TECH STYLE
@@ -929,6 +955,128 @@
                     <div class="target-effect-domain" id="targetEffectDomain">正在载入 Kotlin 动力学核心…</div>
                     <div class="target-effect-ref"><a id="targetEffectReference" href="https://doi.org/10.2133/dmpk.25.208" target="_blank" rel="noopener noreferrer">MODEL REFERENCE</a></div>
                 </div>
+            </div>
+
+            <div class="panel target-effect-panel bic-module" id="bicalutamideModule" aria-busy="true" data-cat-module="bicalutamide">
+                <div class="panel-header">
+                    <span class="panel-title">BICALUTAMIDE / 直接 AR 竞争</span>
+                    <span class="panel-badge">KOTLIN · ANALYTIC PK + RK4</span>
+                </div>
+                <div class="pg-signal-rail" aria-hidden="true">
+                    <span>RACEMATE → R</span>
+                    <span>PLASMA FREE</span>
+                    <span>TISSUE Kp,uu</span>
+                    <span>T / DHT / AR</span>
+                </div>
+                <div class="pg-equation-box">w<sub>T</sub>=T/K<sub>d,T</sub> · w<sub>DHT</sub>=DHT/K<sub>d,DHT</sub> · w<sub>B</sub>=C<sub>u,tissue</sub>/K<sub>i,B</sub> · θ<sub>i</sub>=w<sub>i</sub>/(1+Σw)</div>
+                <div class="pg-control-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="bicDose">每次剂量 <span class="unit">mg</span></label>
+                        <input type="number" class="form-input" id="bicDose" value="50" min="0" max="200" step="5" inputmode="decimal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicInterval">给药间隔 <span class="unit">h</span></label>
+                        <input type="number" class="form-input" id="bicInterval" value="24" min="6" max="168" step="1" inputmode="decimal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicDays">观察时长 <span class="unit">days</span></label>
+                        <input type="number" class="form-input" id="bicDays" value="42" min="1" max="365" step="1" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicTestosterone">游离组织 T <span class="unit">nM</span></label>
+                        <input type="number" class="form-input" id="bicTestosterone" value="0.2" min="0.0001" max="20" step="0.01" inputmode="decimal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicDht">游离组织 DHT <span class="unit">nM</span></label>
+                        <input type="number" class="form-input" id="bicDht" value="0.018" min="0.00001" max="5" step="0.001" inputmode="decimal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicKpuu">组织 Kp,uu <span class="unit">ratio</span></label>
+                        <input type="number" class="form-input" id="bicKpuu" value="1" min="0.05" max="5" step="0.05" inputmode="decimal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicFeedback">HPG 反馈</label>
+                        <select class="form-select" id="bicFeedback">
+                            <option value="0" selected>固定实测雄激素（默认）</option>
+                            <option value="0.5">0.5× 结构应激</option>
+                            <option value="1">1.0× 结构应激</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="bicArContext">AR 状态</label>
+                        <select class="form-select" id="bicArContext">
+                            <option value="wild-type" selected>WT 静默拮抗</option>
+                            <option value="w741l-upper">W741L 激动上界</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="target-effect-metrics" aria-live="polite">
+                    <div class="target-effect-metric primary">
+                        <div class="label">DIRECT AR SIGNAL SUPPRESSION / 同雄激素反事实下的直接信号抑制</div>
+                        <div class="value" id="bicSuppression">CALCULATING…</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">AR ACTIVATION VS PRETREATMENT / 相对治疗前</div>
+                        <div class="value" id="bicRelativeActivation">—</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">TOTAL ACTIVE R-BIC / 总活性 R 异构体</div>
+                        <div class="value" id="bicTotalConcentration">—</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">UNBOUND PLASMA R-BIC / 游离血浆</div>
+                        <div class="value" id="bicUnboundConcentration">—</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">UNBOUND TISSUE R-BIC / 游离组织</div>
+                        <div class="value" id="bicTissueConcentration">—</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">R-BIC–AR OCCUPANCY / 拮抗剂占有</div>
+                        <div class="value" id="bicAntagonistOccupancy">—</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">T + DHT AR OCCUPANCY / 激动配体占有</div>
+                        <div class="value" id="bicAndrogenOccupancy">—</div>
+                    </div>
+                    <div class="target-effect-metric">
+                        <div class="label">ANDROGEN MULTIPLIER / 反馈倍数</div>
+                        <div class="value" id="bicAndrogenMultiplier">—</div>
+                    </div>
+                </div>
+                <div class="pg-ledger">
+                    <div class="pg-ledger-cell">
+                        <div class="pg-ledger-label">STRUCTURAL STRESS RANGE / 非置信区间</div>
+                        <div class="pg-ledger-value" id="bicStressRange">—</div>
+                    </div>
+                    <div class="pg-ledger-cell">
+                        <div class="pg-ledger-label">FDA PK RESIDUAL LEDGER / 校准残差</div>
+                        <div class="pg-ledger-value" id="bicCalibration">—</div>
+                    </div>
+                </div>
+                <div class="target-effect-chart">
+                    <div class="target-effect-chart-title">DIRECT COMPETITION / AR SIGNAL TIME COURSE</div>
+                    <div class="target-effect-chart-wrap">
+                        <canvas id="bicChart" role="img" aria-label="Bicalutamide direct AR competition, occupancy and relative activation over time"></canvas>
+                    </div>
+                    <div class="target-effect-legend" aria-hidden="true">
+                        <span style="--legend-color:#54d6d2">DIRECT SUPPRESSION</span>
+                        <span style="--legend-color:#f5c75b">R-BIC OCCUPANCY</span>
+                        <span style="--legend-color:#ff6f91">AR ACTIVATION / BASELINE</span>
+                    </div>
+                </div>
+                <div class="target-effect-note">比卡鲁胺在这里降低的是 AR 配体加权激活，不是 T/DHT 浓度。默认 T=0.2 nM、DHT=0.018 nM 是各自 1×K<sub>d</sub> 的标准化压力场，不是患者参考范围；HPG 反馈也只是显式结构应激。</div>
+                <div class="target-effect-domain" id="bicDomain">正在载入比卡鲁胺 PK–AR 核心…</div>
+                <div class="target-effect-ref"><a id="bicReference" href="https://www.accessdata.fda.gov/drugsatfda_docs/label/2017/020498s028lbl.pdf" target="_blank" rel="noopener noreferrer">MODEL REFERENCE</a></div>
+                <details class="bic-evidence">
+                    <summary>EVIDENCE / ASSUMPTIONS / 153-QUESTION COVERAGE</summary>
+                    <div class="bic-evidence-body">
+                        <p><strong>监管锚点：</strong>50 mg 单次 R-异构体 Cmax 0.768 μg/mL、Tmax 31.3 h、半衰期 5.8 d、96% 蛋白结合；稳态 8.939±3.504 μg/mL只做外部残差，不反向过拟合。来源人群是健康男性/前列腺癌患者，不是 HRT 队列。</p>
+                        <p><strong>结合锚点：</strong>R-比卡鲁胺 Ki 11.0±1.5 nM 来自鼠前列腺胞质竞争实验；T/DHT 的 0.2/0.018 nM 是 CHO 报告基因系统的表观 Kd。Ki、IC50、组织浓度与临床结局不互换。</p>
+                        <p><strong>结构边界：</strong>1Z95 是 W741L 突变 AR–R-比卡鲁胺结构，不冒充 WT 结构；突变模式只给定性激动上界。</p>
+                        <p><a href="https://github.com/yumeminekosan/Hrt-kaffee/blob/main/ar-kotlin/docs/BICALUTAMIDE_MODEL.md" target="_blank" rel="noopener noreferrer">完整方程、验收门与问题库覆盖矩阵 →</a></p>
+                    </div>
+                </details>
             </div>
 
             <div class="panel target-effect-panel td-e2-module" id="transdermalEstradiolModule" aria-busy="true" data-cat-module="transdermal-e2">
@@ -1575,7 +1723,7 @@
 
     <footer data-cat-module="research-footer">
         <p data-i18n="footer.disclaimer">For research only. Consult physician for treatment.</p>
-        <p class="detail-link"><a href="#fiveArModule">5αR KINETICS &amp; CURVES ↑</a></p>
+        <p class="detail-link"><a href="#bicalutamideModule">BICALUTAMIDE PK–AR MODULE ↑</a> · <a href="#fiveArModule">5αR KINETICS ↑</a></p>
     </footer>
 
     <script>

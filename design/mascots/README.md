@@ -1,6 +1,6 @@
 # Hrt-kaffee module cats
 
-Sixteen module cats are kept in two synchronized forms:
+Seventeen module cats are kept in two synchronized forms:
 
 - `psd/<module>.psd`: layered 512×512 source for further rigging.
 - `../../public/mascots/cats/<module>/`: transparent web layers used by the page.
@@ -21,3 +21,8 @@ These PSDs are rig-ready art sources rather than Cubism binaries. A native
 Live2D Cubism export would additionally require manual deformers and a generated
 `.moc3` model; the page intentionally keeps the zero-runtime layered animation
 so GitHub Pages can render it without a proprietary SDK.
+
+The bicalutamide cat uses a cyan interrupted receptor ring and magenta shield
+as an abstract direct-competition cue. Its source is `sheets/sheet-e.png`; the
+same 96-pixel/32-colour/stepped-outline pipeline produces its original, PSD and
+three browser layers.

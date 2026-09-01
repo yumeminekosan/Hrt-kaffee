@@ -1,6 +1,7 @@
 package dev.hrtkaffee.ar
 
 import dev.hrtkaffee.ar.model.DutasterideRigorousPipeline
+import dev.hrtkaffee.ar.model.BicalutamideRigorousPipeline
 import dev.hrtkaffee.ar.model.FinasterideRigorousPipeline
 import dev.hrtkaffee.ar.model.ProgestogenGnRHRigorousPipeline
 import dev.hrtkaffee.ar.rigor.AssumptionIds
@@ -41,6 +42,7 @@ class FiveAlphaReductaseFlowIntegrationTest {
     fun eachEmbeddedEndocrineModuleFeedsTheWholeHiddenConstruction() {
         val finasteride = FinasterideRigorousPipeline.prepare()
         val dutasteride = DutasterideRigorousPipeline.prepare()
+        val bicalutamide = BicalutamideRigorousPipeline.prepare()
         val progestogen = ProgestogenGnRHRigorousPipeline.prepare()
         auditFlow(
             finasteride.baseReactionNetwork,
@@ -51,6 +53,11 @@ class FiveAlphaReductaseFlowIntegrationTest {
             dutasteride.baseReactionNetwork,
             dutasteride.microscopicInitialState,
             dutasteride.exactGenerator,
+        )
+        auditFlow(
+            bicalutamide.baseReactionNetwork,
+            bicalutamide.microscopicInitialState,
+            bicalutamide.exactGenerator,
         )
         auditFlow(
             progestogen.baseReactionNetwork,

@@ -4,6 +4,7 @@
     const CAT_CONFIG = {
         presets: { slug: 'presets', label: '预设三花猫' },
         'five-ar': { slug: 'five-ar', label: '5αR 银虎斑猫' },
+        bicalutamide: { slug: 'bicalutamide', label: '比卡鲁胺紫灰猫' },
         'transdermal-e2': { slug: 'transdermal-e2', label: '透皮雌二醇奶牛猫' },
         'drug-settings': { slug: 'drug-settings', label: '药物设置橘猫' },
         'model-selection': { slug: 'model-selection', label: '模型选择暹罗猫' },
@@ -246,7 +247,7 @@
 
     function bindResultReadouts() {
         const selectors = [
-            '#targetEffectValue', '#tdE2Total', '#pgGnrhEffect',
+            '#targetEffectValue', '#bicSuppression', '#tdE2Total', '#pgGnrhEffect',
             '#cmaxStat', '#cminStat', '#aucStat'
         ];
         selectors.forEach((selector) => {

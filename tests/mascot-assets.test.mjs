@@ -10,6 +10,7 @@ const controller = readFileSync(join(root, 'public/mascots/kaffee-cats.js'), 'ut
 const modules = [
   'presets',
   'five-ar',
+  'bicalutamide',
   'transdermal-e2',
   'drug-settings',
   'model-selection',

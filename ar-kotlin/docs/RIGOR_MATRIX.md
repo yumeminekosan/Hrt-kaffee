@@ -27,8 +27,9 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 | Chain complex | Simplicial faces and boundary; stoichiometric two-term complex | Exact identity | `∂²=0`; exact left/right nullspaces | Interpret selected cycles/conservation laws physically |
 | Finasteride PK/PD | Saturable SRD5A2 binding, SRD5A1 inhibition and serum-DHT turnover | Identified population parameterization + numerical certificate | JVM RK4 step-halving; JVM/Wasm trajectory parity; 0–1 bounds | Re-identify for an individual; doses above 5 mg/day are repeated-dose extrapolations |
 | Dutasteride PK/PD | Dual SRD5A1/SRD5A2 competitive engagement, time-dependent enzyme inactivation and serum-DHT turnover | Regulatory/literature-anchored population parameterization + numerical certificate | 0.5 mg/day 1/2-week and 24-week calibration windows; RK4 step-halving; 0–1 bounds | Accessibility/inactivation parameters are population-effective, not direct structural constants or an individual fit |
+| Bicalutamide PK–AR | Active-R Bateman PK, unbound plasma/tissue transfer, T/DHT/R-BIC competition, efficacy-separated signal and optional HPG stress state | Regulatory anchor + assay-transfer parameterization + exact occupancy identities + numerical residual | Exact 50 mg Cmax/Tmax back-calculation; Css external z-residual; receptor partition; zero-dose and dose-monotonic gates; JVM/JS parity; W741L boundary test | Human target-tissue Kp,uu, WT functional transfer, HRT population feedback and external concentration–effect validation remain unidentified |
 | Progestogen PR/GnRH feedback | Oral PK, ligand–PR occupancy, delayed E2-primed GnRH pulse feedback and post-last-dose threshold crossing; direct GnRH-receptor antagonism explicitly excluded | Structure/literature-anchored population projection + numerical certificate | P4 five-dose 100 mg label Cmax window; RK4 step-halving; 0–1 bounds; JVM/JS coverage parity; exact full-flow network test | Synthetic progestogens are relative structure/PK extrapolations; pulse feedback and its threshold window are not individualized and depend on endocrine context |
-| Integrated UI | Finasteride/dutasteride and progestogen dose/time inputs, endpoint metrics and time curves inside the original Hrt-kaffee page | Presentation only | Kotlin/JVM↔Kotlin/JS trajectory parity; browser build; unchanged-page identity checks | UI is not an evidence source; the mathematical flow is intentionally hidden |
+| Integrated UI | Finasteride/dutasteride, bicalutamide PK–AR and progestogen dose/time inputs, endpoint metrics and time curves inside the original Hrt-kaffee page | Presentation only | Kotlin/JVM↔Kotlin/JS trajectory parity; browser build; mascot-layer reconstruction and unchanged-page identity checks | UI is not an evidence source; the mathematical flow is intentionally hidden |
 
 ## Assumption policy
 
@@ -42,7 +43,9 @@ This matrix is the definition of “done”. A green numerical curve never upgra
 
 ## Parameter policy
 
-The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. The finasteride
+The default AR values are dimensionless and tagged `ILLUSTRATIVE_PARAMETERIZATION`. The bicalutamide
+path calibrates only a lumped active-R concentration scale to regulatory single-dose PK, then carries
+assay-specific affinity and unmeasured tissue transfer as explicit sensitivity parameters. The finasteride
 path uses the published Suzuki et al. population PK/PD parameters; the dutasteride path uses regulatory
 PK anchors and population DHT time-course calibration. The P4 path uses label PK, the observed PR–P4
 structure and delayed human neuroendocrine feedback constraints; synthetic progestogens remain relative

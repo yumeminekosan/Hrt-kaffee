@@ -17,7 +17,7 @@ flowchart TD
     A --> J["空间晶格上的交互粒子系统"]
     J --> K["L,K→∞：水动力 PDE"]
     A --> L["链复形、守恒量与反应循环"]
-    A --> M["非那/度他雄胺与孕激素–PR/GnRH 群体投影<br/>原页面仅显示输入、结果与曲线"]
+    A --> M["非那/度他雄胺、比卡鲁胺–AR 与孕激素–PR/GnRH 群体投影<br/>原页面仅显示输入、结果与曲线"]
 ```
 
 The quantum branch is deliberately one-way through `Q1`: no direct `Q --> A` edge exists.
@@ -47,6 +47,15 @@ dutasteride complex was observed. `DutasterideRigorousPipeline` applies the same
 generator/density/chain rule. `embeddedEngine` is parity-tested against both JVM models and writes
 only dose/time observables into the existing Hrt-kaffee page; it never renders the internal theorem or
 operator names.
+
+`BicalutamideMicroscopicNetwork` adds reversible active-R absorption/elimination reservoirs and
+the three mutually exclusive receptor channels `T + AR ⇄ T_AR`, `DHT + AR ⇄ DHT_AR` and
+`R_BIC + AR ⇄ R_BIC_AR`. `BicalutamideRigorousPipeline` passes that table to the exact generator,
+density symbol and chain complex; the integration test then consumes it through the same random-
+time-change, nonlinear-generator/Hamiltonian, Doob/Gillespie and spatial/PDE machinery. The browser
+projection separately reports total active-R plasma, unbound plasma, an explicit unbound-tissue
+partition, receptor occupancies and two counterfactual signals. It does not call AR antagonism a fall
+in testosterone or DHT, and it marks W741L as an uncalibrated agonist upper-bound context.
 
 `ProgestogenGnRHMicroscopicNetwork` adds `PG + PR ⇄ PR·PG` and reversible
 `GNRH_READY ⇄ GNRH_INHIBITED` feedback channels to reversible PK reservoir channels. Its structural
