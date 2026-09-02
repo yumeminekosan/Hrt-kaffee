@@ -2,6 +2,7 @@ package dev.hrtkaffee.ar.embedded
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class EmbeddedBicalutamideModelTest {
@@ -32,5 +33,51 @@ class EmbeddedBicalutamideModelTest {
         )
         assertTrue(result.stressRange.lowerDirectSuppressionFraction <=
             result.stressRange.upperDirectSuppressionFraction)
+    }
+
+    @Test
+    fun estradiolBridgeKeepsTheMissingAndrogenGateInTheBrowser() {
+        val result = EmbeddedBicalutamideEstradiolBridge.evaluate(
+            EmbeddedBicalutamideEstradiolBridgeInput(estradiolAveragePgMl = 100.0),
+        )
+        assertFalse(result.isDoseIdentifiable)
+        assertTrue(result.candidates.isEmpty())
+        assertTrue(result.gateMessage.contains("不能识别"))
+    }
+
+    @Test
+    fun browserBridgeFindsZeroWhenResidualAndrogenAlreadyMeetsTheTarget() {
+        val result = EmbeddedBicalutamideEstradiolBridge.evaluate(
+            EmbeddedBicalutamideEstradiolBridgeInput(
+                estradiolAveragePgMl = 100.0,
+                androgenEvidence =
+                    EmbeddedBicalutamideAndrogenEvidence.LAB_ANCHORED_TISSUE_EQUIVALENTS,
+                currentFreeTissueTestosteroneNm = 0.02,
+                currentFreeTissueDhtNm = 0.0018,
+                days = 84,
+            ),
+        )
+        assertEquals(0.0, result.centralMinimumEquivalentDoseMg)
+        assertEquals(0.0, result.conservativeMinimumEquivalentDoseMg)
+    }
+
+    @Test
+    fun estradiolExposureDoesNotBypassTheResidualAndrogenGate() {
+        val input = EmbeddedBicalutamideEstradiolBridgeInput(
+            estradiolAveragePgMl = 50.0,
+            androgenEvidence =
+                EmbeddedBicalutamideAndrogenEvidence.LAB_ANCHORED_TISSUE_EQUIVALENTS,
+            days = 84,
+        )
+        val lower = EmbeddedBicalutamideEstradiolBridge.evaluate(input)
+        val higher = EmbeddedBicalutamideEstradiolBridge.evaluate(
+            input.copy(estradiolAveragePgMl = 300.0),
+        )
+        assertEquals(lower.centralMinimumEquivalentDoseMg, higher.centralMinimumEquivalentDoseMg)
+        assertEquals(
+            lower.conservativeMinimumEquivalentDoseMg,
+            higher.conservativeMinimumEquivalentDoseMg,
+        )
+        assertEquals(lower.candidates, higher.candidates)
     }
 }

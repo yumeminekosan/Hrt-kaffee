@@ -7,6 +7,14 @@ const model = readFileSync(
   'ar-kotlin/rigor-core/src/main/kotlin/dev/hrtkaffee/ar/model/BicalutamideModel.kt',
   'utf8',
 );
+const bridge = readFileSync(
+  'ar-kotlin/rigor-core/src/main/kotlin/dev/hrtkaffee/ar/model/BicalutamideEstradiolBridge.kt',
+  'utf8',
+);
+const embeddedBridge = readFileSync(
+  'ar-kotlin/embeddedEngine/src/commonMain/kotlin/dev/hrtkaffee/ar/embedded/EmbeddedBicalutamideEstradiolBridge.kt',
+  'utf8',
+);
 const coverage = readFileSync(
   'ar-kotlin/docs/BICALUTAMIDE_QUESTION_COVERAGE.md',
   'utf8',
@@ -26,6 +34,30 @@ test('PK and binding anchors remain explicit and tissue transfer remains an inpu
   assert.match(model, /R_BICALUTAMIDE_KI_NM = 11\.0/);
   assert.match(model, /val tissueUnboundPartition: Double/);
   assert.match(model, /sameAndrogenCounterfactualActivationFraction/);
+});
+
+test('estradiol and bicalutamide modules are linked through a residual-androgen evidence gate', () => {
+  assert.match(html, /id="bicBridgeMode"/);
+  assert.match(html, /id="bicLinkedE2Average"/);
+  assert.match(html, /id="bicCentralMinimumDose"/);
+  assert.match(html, /id="bicConservativeMinimumDose"/);
+  assert.match(html, /href="#transdermalEstradiolModule"/);
+  assert.match(html, /href="#bicalutamideModule"/);
+  assert.match(html, /E2 暴露本身不能识别个人残余雄激素/);
+  assert.match(html, /普通血清总 T\/DHT 不能直接当作组织等效游离浓度/);
+  assert.match(html, /bvae108/);
+  assert.match(html, /20420188241305022/);
+});
+
+test('minimum-dose inversion is gated, grid-based, and mirrored for browser parity', () => {
+  for (const source of [bridge, embeddedBridge]) {
+    assert.match(source, /ESTRADIOL_EXPOSURE_ONLY/);
+    assert.match(source, /LAB_ANCHORED_TISSUE_EQUIVALENTS/);
+    assert.match(source, /DISPLAY_DOSES_MG = listOf\(0\.0, 5\.0, 10\.0, 25\.0, 50\.0\)/);
+    assert.match(source, /不能识别个人 AR 信号或最低比卡鲁胺剂量/);
+    assert.match(source, /conservativeMinimumEquivalentDoseMg/);
+  }
+  assert.match(html, /不等于 HRT 充分性、处方建议或安全剂量/);
 });
 
 test('every source-library question has a row-level disposition', () => {

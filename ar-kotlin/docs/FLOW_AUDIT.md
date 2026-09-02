@@ -57,6 +57,13 @@ projection separately reports total active-R plasma, unbound plasma, an explicit
 partition, receptor occupancies and two counterfactual signals. It does not call AR antagonism a fall
 in testosterone or DHT, and it marks W741L as an uncalibrated agonist upper-bound context.
 
+`BicalutamideEstradiolBridge` adds no fictitious E2→T/DHT reaction. It transfers only the
+transdermal module's exposure summary, then enforces an observation gate: without baseline and
+contemporaneous residual tissue-equivalent T/DHT, no AR signal or dose threshold is returned. With
+those inputs, it reuses the audited active-R PK and WT competition equation to search an explicit
+0–50 mg grid against the worst signal in the final dosing interval. Central and conservative
+`Kp,uu/Ki` structures are shown separately; neither is a clinical HRT-sufficiency or safety result.
+
 `ProgestogenGnRHMicroscopicNetwork` adds `PG + PR ⇄ PR·PG` and reversible
 `GNRH_READY ⇄ GNRH_INHIBITED` feedback channels to reversible PK reservoir channels. Its structural
 record assigns PDB `1A28` to the observed human PR–progesterone complex and explicitly rejects a

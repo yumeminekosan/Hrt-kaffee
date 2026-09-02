@@ -37,6 +37,10 @@ private data class BicalutamideElements(
     val tissuePartition: HTMLInputElement,
     val feedback: HTMLSelectElement,
     val arContext: HTMLSelectElement,
+    val bridgeMode: HTMLSelectElement,
+    val baselineTestosterone: HTMLInputElement,
+    val baselineDht: HTMLInputElement,
+    val targetRelativeSignal: HTMLInputElement,
     val suppression: HTMLElement,
     val relativeActivation: HTMLElement,
     val totalConcentration: HTMLElement,
@@ -47,9 +51,20 @@ private data class BicalutamideElements(
     val androgenMultiplier: HTMLElement,
     val stressRange: HTMLElement,
     val calibration: HTMLElement,
+    val linkedE2Average: HTMLElement,
+    val estradiolOnlySignal: HTMLElement,
+    val centralMinimumDose: HTMLElement,
+    val conservativeMinimumDose: HTMLElement,
+    val doseComparison: HTMLElement,
+    val bridgeGate: HTMLElement,
     val boundary: HTMLElement,
     val reference: HTMLAnchorElement,
     val canvas: HTMLCanvasElement,
+    val linkedE2Delivery: HTMLSelectElement,
+    val linkedE2Area: HTMLInputElement,
+    val linkedE2Interval: HTMLInputElement,
+    val linkedE2Days: HTMLInputElement,
+    val linkedE2Site: HTMLSelectElement,
 )
 
 private data class TransdermalElements(
@@ -71,10 +86,12 @@ private data class TransdermalElements(
     val canvas: HTMLCanvasElement,
 )
 
+private var latestTransdermalProjection: TransdermalEstradiolProjection? = null
+
 fun main() {
     bindFiveArModule()
-    bindBicalutamideModule()
     bindTransdermalEstradiolModule()
+    bindBicalutamideModule()
     bindProgestogenModule()
 }
 
@@ -136,6 +153,84 @@ private fun bindBicalutamideModule() {
         elements.boundary.classList.toggle("extrapolated", !result.isPkReferenceRegimen)
         elements.reference.textContent = "FDA CASODEX LABEL · PK / MOA ANCHOR"
         elements.reference.href = EmbeddedBicalutamideModel.FDA_LABEL_URL
+        val linkedE2 = latestTransdermalProjection
+        elements.linkedE2Average.textContent = linkedE2?.let {
+            "Cavg ${it.cAverageLastIntervalPgMl.oneDecimal()} pg/mL · " +
+                "trough ${it.troughPgMl.oneDecimal()} pg/mL"
+        } ?: "E2 MODULE NOT AVAILABLE"
+        val bridgeEvidence = EmbeddedBicalutamideAndrogenEvidence.fromWireId(
+            elements.bridgeMode.value,
+        )
+        val bridgeInputsEnabled =
+            bridgeEvidence == EmbeddedBicalutamideAndrogenEvidence.LAB_ANCHORED_TISSUE_EQUIVALENTS
+        elements.baselineTestosterone.disabled = !bridgeInputsEnabled
+        elements.baselineDht.disabled = !bridgeInputsEnabled
+        elements.targetRelativeSignal.disabled = !bridgeInputsEnabled
+        val bridge = EmbeddedBicalutamideEstradiolBridge.evaluate(
+            EmbeddedBicalutamideEstradiolBridgeInput(
+                estradiolAveragePgMl = linkedE2?.cAverageLastIntervalPgMl ?: 0.0,
+                androgenEvidence = bridgeEvidence,
+                baselineFreeTissueTestosteroneNm = boundedInput(
+                    elements.baselineTestosterone.value,
+                    EmbeddedBicalutamideModel.TESTOSTERONE_KD_NM,
+                    0.0001,
+                    20.0,
+                ),
+                baselineFreeTissueDhtNm = boundedInput(
+                    elements.baselineDht.value,
+                    EmbeddedBicalutamideModel.DHT_KD_NM,
+                    0.00001,
+                    5.0,
+                ),
+                currentFreeTissueTestosteroneNm = input.freeTissueTestosteroneNm,
+                currentFreeTissueDhtNm = input.freeTissueDhtNm,
+                targetRelativeArSignal = boundedInput(
+                    elements.targetRelativeSignal.value,
+                    50.0,
+                    1.0,
+                    100.0,
+                ) / 100.0,
+                doseIntervalHours = input.doseIntervalHours,
+                days = input.days,
+                tissueUnboundPartition = input.tissueUnboundPartition,
+            ),
+        )
+        when {
+            input.arContext != EmbeddedBicalutamideArContext.WILD_TYPE -> {
+                elements.estradiolOnlySignal.textContent = "WT ONLY"
+                elements.centralMinimumDose.textContent = "NOT IDENTIFIABLE"
+                elements.conservativeMinimumDose.textContent = "NOT IDENTIFIABLE"
+                elements.doseComparison.textContent = "W741L 激动上界不能使用 WT 最低剂量反演。"
+                elements.bridgeGate.textContent =
+                    "AR 突变模式下，结合不等于拮抗；E2–比卡鲁胺桥仅对 WT 静默拮抗模式开放。"
+            }
+            !bridge.isDoseIdentifiable -> {
+                elements.estradiolOnlySignal.textContent = "NEEDS RESIDUAL T/DHT"
+                elements.centralMinimumDose.textContent = "NOT IDENTIFIABLE"
+                elements.conservativeMinimumDose.textContent = "NOT IDENTIFIABLE"
+                elements.doseComparison.textContent =
+                    "0 / 5 / 10 / 25 / 50 mg 比较已锁定：E2 暴露不能替代同期雄激素观测。"
+                elements.bridgeGate.textContent = bridge.gateMessage
+            }
+            else -> {
+                elements.estradiolOnlySignal.textContent =
+                    ratioPercent(bridge.estradiolOnlyRelativeArSignal ?: 0.0)
+                elements.centralMinimumDose.textContent = modelEquivalentDose(
+                    bridge.centralMinimumEquivalentDoseMg,
+                    input.doseIntervalHours,
+                )
+                elements.conservativeMinimumDose.textContent = modelEquivalentDose(
+                    bridge.conservativeMinimumEquivalentDoseMg,
+                    input.doseIntervalHours,
+                )
+                elements.doseComparison.textContent = bridge.candidates.joinToString(" · ") {
+                    "${it.doseMg.displayNumber()} mg " +
+                        "${ratioPercent(it.centralWorstRelativeArSignal)}/" +
+                        ratioPercent(it.conservativeWorstRelativeArSignal)
+                }
+                elements.bridgeGate.textContent = bridge.gateMessage
+            }
+        }
         drawBicalutamideChart(elements.canvas, result)
         elements.panel.setAttribute("aria-busy", "false")
     }
@@ -147,6 +242,9 @@ private fun bindBicalutamideModule() {
         elements.testosterone,
         elements.dht,
         elements.tissuePartition,
+        elements.baselineTestosterone,
+        elements.baselineDht,
+        elements.targetRelativeSignal,
     ).forEach { input ->
         input.addEventListener("input", { _: Event ->
             if (input.value.toDoubleOrNull()?.isFinite() == true) render()
@@ -155,6 +253,17 @@ private fun bindBicalutamideModule() {
     }
     elements.feedback.addEventListener("change", { _: Event -> render() })
     elements.arContext.addEventListener("change", { _: Event -> render() })
+    elements.bridgeMode.addEventListener("change", { _: Event -> render() })
+    listOf<HTMLElement>(
+        elements.linkedE2Delivery,
+        elements.linkedE2Area,
+        elements.linkedE2Interval,
+        elements.linkedE2Days,
+        elements.linkedE2Site,
+    ).forEach { control ->
+        control.addEventListener("input", { _: Event -> render() })
+        control.addEventListener("change", { _: Event -> render() })
+    }
     window.addEventListener("resize", { _: Event ->
         latest?.let { drawBicalutamideChart(elements.canvas, it) }
     })
@@ -173,6 +282,10 @@ private fun findBicalutamideElements(): BicalutamideElements? {
         tissuePartition = element("bicKpuu") as? HTMLInputElement ?: return null,
         feedback = element("bicFeedback") as? HTMLSelectElement ?: return null,
         arContext = element("bicArContext") as? HTMLSelectElement ?: return null,
+        bridgeMode = element("bicBridgeMode") as? HTMLSelectElement ?: return null,
+        baselineTestosterone = element("bicBaselineTestosterone") as? HTMLInputElement ?: return null,
+        baselineDht = element("bicBaselineDht") as? HTMLInputElement ?: return null,
+        targetRelativeSignal = element("bicTargetRelativeSignal") as? HTMLInputElement ?: return null,
         suppression = element("bicSuppression") ?: return null,
         relativeActivation = element("bicRelativeActivation") ?: return null,
         totalConcentration = element("bicTotalConcentration") ?: return null,
@@ -183,9 +296,20 @@ private fun findBicalutamideElements(): BicalutamideElements? {
         androgenMultiplier = element("bicAndrogenMultiplier") ?: return null,
         stressRange = element("bicStressRange") ?: return null,
         calibration = element("bicCalibration") ?: return null,
+        linkedE2Average = element("bicLinkedE2Average") ?: return null,
+        estradiolOnlySignal = element("bicEstradiolOnlySignal") ?: return null,
+        centralMinimumDose = element("bicCentralMinimumDose") ?: return null,
+        conservativeMinimumDose = element("bicConservativeMinimumDose") ?: return null,
+        doseComparison = element("bicDoseComparison") ?: return null,
+        bridgeGate = element("bicBridgeGate") ?: return null,
         boundary = element("bicDomain") ?: return null,
         reference = element("bicReference") as? HTMLAnchorElement ?: return null,
         canvas = element("bicChart") as? HTMLCanvasElement ?: return null,
+        linkedE2Delivery = element("tdE2Delivery") as? HTMLSelectElement ?: return null,
+        linkedE2Area = element("tdE2Area") as? HTMLInputElement ?: return null,
+        linkedE2Interval = element("tdE2Interval") as? HTMLInputElement ?: return null,
+        linkedE2Days = element("tdE2Days") as? HTMLInputElement ?: return null,
+        linkedE2Site = element("tdE2Site") as? HTMLSelectElement ?: return null,
     )
 }
 
@@ -207,6 +331,7 @@ private fun bindTransdermalEstradiolModule() {
         val result = EmbeddedTransdermalEstradiolModel.simulate(
             TransdermalEstradiolInput(delivery, area, interval, days, siteFactor),
         )
+        latestTransdermalProjection = result
         latest = result
         elements.total.textContent = "${result.endpoint.totalEstradiolPgMl.oneDecimal()} pg/mL"
         elements.free.textContent = "${result.endpoint.freeEstradiolPgMl.twoDecimals()} pg/mL"
@@ -514,6 +639,12 @@ private fun signedPercent(fraction: Double): String =
 
 private fun ratioPercent(fraction: Double): String =
     "${(fraction * 100.0).roundToInt()}%"
+
+private fun modelEquivalentDose(doseMg: Double?, intervalHours: Double): String = when (doseMg) {
+    null -> "≤50 mg 内未通过"
+    0.0 -> "0 mg · 模型阈值已满足"
+    else -> "${doseMg.displayNumber()} mg / ${intervalHours.displayNumber()} h"
+}
 
 private fun concentration(valueNm: Double): String = when {
     valueNm < 0.01 -> "<0.01 nM"

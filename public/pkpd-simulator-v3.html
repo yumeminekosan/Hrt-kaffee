@@ -493,6 +493,63 @@
         .bic-evidence-body { padding: 0 0.55rem 0.55rem; }
         .bic-evidence-body p + p { margin-top: 0.35rem; }
         .bic-evidence a { color: var(--accent-cyan); text-decoration: none; }
+        .bic-bridge {
+            margin-top: 0.7rem;
+            padding: 0.7rem;
+            border: 1px solid rgba(84, 214, 210, 0.3);
+            background:
+                linear-gradient(110deg, rgba(84, 214, 210, 0.08), transparent 58%),
+                rgba(8, 11, 17, 0.88);
+        }
+        .bic-bridge-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.45rem;
+            margin-bottom: 0.55rem;
+        }
+        .bic-bridge-title { color: var(--accent-cyan); font-size: 0.68rem; letter-spacing: 0.09em; }
+        .bic-bridge-header a { color: #c9a9ff; font-size: 0.58rem; text-decoration: none; }
+        .bic-bridge-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.3rem;
+            margin-bottom: 0.6rem;
+            color: var(--text-sub);
+            font-size: 0.58rem;
+        }
+        .bic-bridge-flow span {
+            padding: 0.22rem 0.35rem;
+            border: 1px solid rgba(168, 114, 255, 0.22);
+            background: rgba(168, 114, 255, 0.05);
+        }
+        .bic-bridge-flow b { color: var(--accent-cyan); font-weight: 600; }
+        .bic-bridge-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1px;
+            margin-top: 0.6rem;
+            border: 1px solid rgba(84, 214, 210, 0.2);
+            background: rgba(84, 214, 210, 0.2);
+        }
+        .bic-bridge-metric { min-width: 0; padding: 0.55rem; background: rgba(10, 12, 16, 0.92); }
+        .bic-bridge-metric .label { color: var(--text-dim); font-size: 0.52rem; letter-spacing: 0.06em; }
+        .bic-bridge-metric .value { margin-top: 0.14rem; overflow-wrap: anywhere; color: var(--text-main); font-size: 0.82rem; font-weight: 600; }
+        .bic-bridge-metric.primary { grid-column: span 2; }
+        .bic-bridge-metric.primary .value { color: var(--accent-cyan); }
+        .bic-dose-comparison {
+            margin-top: 0.5rem;
+            padding: 0.5rem 0.55rem;
+            border-left: 2px solid rgba(168, 114, 255, 0.68);
+            background: rgba(168, 114, 255, 0.05);
+            color: var(--text-sub);
+            font-size: 0.58rem;
+            line-height: 1.55;
+            overflow-wrap: anywhere;
+        }
+        .bic-dose-comparison strong { color: #c9a9ff; }
 
         /* ============================================
            PROGESTOGEN MODULE - RHODES ISLAND TECH STYLE
@@ -815,6 +872,8 @@
             .pg-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .pg-control-grid .form-group:first-child { grid-column: span 2; }
             .pg-coverage-inputs { grid-template-columns: 1fr; }
+            .bic-bridge-metrics { grid-template-columns: 1fr; }
+            .bic-bridge-metric.primary { grid-column: span 1; }
         }
 
         .pg-divider {
@@ -983,11 +1042,11 @@
                         <input type="number" class="form-input" id="bicDays" value="42" min="1" max="365" step="1" inputmode="numeric">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="bicTestosterone">游离组织 T <span class="unit">nM</span></label>
+                        <label class="form-label" for="bicTestosterone">当前组织等效 T <span class="unit">nM</span></label>
                         <input type="number" class="form-input" id="bicTestosterone" value="0.2" min="0.0001" max="20" step="0.01" inputmode="decimal">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="bicDht">游离组织 DHT <span class="unit">nM</span></label>
+                        <label class="form-label" for="bicDht">当前组织等效 DHT <span class="unit">nM</span></label>
                         <input type="number" class="form-input" id="bicDht" value="0.018" min="0.00001" max="5" step="0.001" inputmode="decimal">
                     </div>
                     <div class="form-group">
@@ -1054,6 +1113,67 @@
                         <div class="pg-ledger-value" id="bicCalibration">—</div>
                     </div>
                 </div>
+                <section class="bic-bridge" aria-labelledby="bicBridgeTitle">
+                    <div class="bic-bridge-header">
+                        <div class="bic-bridge-title" id="bicBridgeTitle">E2 × BICALUTAMIDE / 个体阈值桥</div>
+                        <a href="#transdermalEstradiolModule">读取下方 TRANSDERMAL E2 模块 ↓</a>
+                    </div>
+                    <div class="bic-bridge-flow" aria-label="Estradiol to bicalutamide bridge flow">
+                        <span><b>E2 Cavg</b> 暴露上下文</span>
+                        <b aria-hidden="true">→</b>
+                        <span>同期残余 T/DHT 证据门</span>
+                        <b aria-hidden="true">→</b>
+                        <span>WT AR 竞争</span>
+                        <b aria-hidden="true">→</b>
+                        <span>最低通过的模型等效剂量</span>
+                    </div>
+                    <div class="pg-control-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="bicBridgeMode">个体雄激素证据</label>
+                            <select class="form-select" id="bicBridgeMode">
+                                <option value="e2-only" selected>仅 E2 暴露 · 不可反推</option>
+                                <option value="lab-anchored">已转换到受体尺度的基线/同期 T/DHT · 高级</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="bicBaselineTestosterone">E2 前组织等效 T <span class="unit">nM</span></label>
+                            <input type="number" class="form-input" id="bicBaselineTestosterone" value="0.2" min="0.0001" max="20" step="0.01" inputmode="decimal">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="bicBaselineDht">E2 前组织等效 DHT <span class="unit">nM</span></label>
+                            <input type="number" class="form-input" id="bicBaselineDht" value="0.018" min="0.00001" max="5" step="0.001" inputmode="decimal">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="bicTargetRelativeSignal">研究阈值：剩余 AR 信号 <span class="unit">% baseline</span></label>
+                            <input type="number" class="form-input" id="bicTargetRelativeSignal" value="50" min="1" max="100" step="1" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="target-effect-note">普通血清总 T/DHT 不能直接当作组织等效游离浓度；没有经过验证的血清→目标组织映射时，请保留默认的“仅 E2 暴露”证据门。</div>
+                    <div class="bic-bridge-metrics" aria-live="polite">
+                        <div class="bic-bridge-metric primary">
+                            <div class="label">LINKED E2 EXPOSURE / 来自经皮 E2 模块</div>
+                            <div class="value" id="bicLinkedE2Average">CALCULATING…</div>
+                        </div>
+                        <div class="bic-bridge-metric">
+                            <div class="label">PRE-BICALUTAMIDE RESIDUAL AR SIGNAL / 加比卡鲁胺前</div>
+                            <div class="value" id="bicEstradiolOnlySignal">—</div>
+                        </div>
+                        <div class="bic-bridge-metric">
+                            <div class="label">CENTRAL MINIMUM / 中心模型等效剂量</div>
+                            <div class="value" id="bicCentralMinimumDose">—</div>
+                        </div>
+                        <div class="bic-bridge-metric">
+                            <div class="label">CONSERVATIVE MINIMUM / Kp,uu 0.25 + Ki 12.5 nM</div>
+                            <div class="value" id="bicConservativeMinimumDose">—</div>
+                        </div>
+                    </div>
+                    <div class="bic-dose-comparison">
+                        <strong>0 / 5 / 10 / 25 / 50 mg 对比（中心/保守的末间隔最坏 AR 信号）：</strong>
+                        <span id="bicDoseComparison">等待可识别的残余雄激素输入。</span>
+                    </div>
+                    <div class="target-effect-domain" id="bicBridgeGate">E2 暴露本身不能识别个人残余雄激素。</div>
+                    <div class="target-effect-note">“最低”仅指在所填基线、当前组织等效 T/DHT、目标阈值和 PK/结合假设下，0–50 mg 网格中首个通过值。它不等于 HRT 充分性、处方建议或安全剂量；肝脏风险、临床女性化终点和个体 PK 均未进入反演。</div>
+                </section>
                 <div class="target-effect-chart">
                     <div class="target-effect-chart-title">DIRECT COMPETITION / AR SIGNAL TIME COURSE</div>
                     <div class="target-effect-chart-wrap">
@@ -1074,7 +1194,8 @@
                         <p><strong>监管锚点：</strong>50 mg 单次 R-异构体 Cmax 0.768 μg/mL、Tmax 31.3 h、半衰期 5.8 d、96% 蛋白结合；稳态 8.939±3.504 μg/mL只做外部残差，不反向过拟合。来源人群是健康男性/前列腺癌患者，不是 HRT 队列。</p>
                         <p><strong>结合锚点：</strong>R-比卡鲁胺 Ki 11.0±1.5 nM 来自鼠前列腺胞质竞争实验；T/DHT 的 0.2/0.018 nM 是 CHO 报告基因系统的表观 Kd。Ki、IC50、组织浓度与临床结局不互换。</p>
                         <p><strong>结构边界：</strong>1Z95 是 W741L 突变 AR–R-比卡鲁胺结构，不冒充 WT 结构；突变模式只给定性激动上界。</p>
-                        <p><a href="https://github.com/yumeminekosan/Hrt-kaffee/blob/main/ar-kotlin/docs/BICALUTAMIDE_MODEL.md" target="_blank" rel="noopener noreferrer">完整方程、验收门与问题库覆盖矩阵 →</a></p>
+                        <p><strong>E2 联动证据门：</strong><a href="https://doi.org/10.1210/jendso/bvae108" target="_blank" rel="noopener noreferrer">2024 随机开放试验</a>的参与者均同时使用螺内酯，不能识别 E2 单药的个人浓度→T 函数；<a href="https://doi.org/10.1177/20420188241305022" target="_blank" rel="noopener noreferrer">成人病例系列</a>也没有校准个人疗效阈值。</p>
+                        <p><a href="https://github.com/yumeminekosan/Hrt-kaffee/blob/main/ar-kotlin/docs/BICALUTAMIDE_MODEL.md" target="_blank" rel="noopener noreferrer">直接竞争模型 →</a> · <a href="https://github.com/yumeminekosan/Hrt-kaffee/blob/main/ar-kotlin/docs/BICALUTAMIDE_E2_BRIDGE.md" target="_blank" rel="noopener noreferrer">E2 阈值桥、验收门与解释边界 →</a></p>
                     </div>
                 </details>
             </div>
@@ -1163,7 +1284,7 @@
                     </div>
                 </div>
                 <div class="pg-ledger"><div class="pg-ledger-cell"><div class="pg-ledger-label">EXPOSURE LEDGER / 暴露账本</div><div class="pg-ledger-value" id="tdE2Exposure">—</div></div></div>
-                <div class="target-effect-note">贴片→角质层→活性表皮→真皮储库→中央/外周→SHBG/白蛋白→ER。受体占有率不等同临床疗效；GPER 为结构投影。</div>
+                <div class="target-effect-note" id="tdE2BridgeExport">贴片→角质层→活性表皮→真皮储库→中央/外周→SHBG/白蛋白→ER。Cavg 会同步到上方 <a href="#bicalutamideModule">E2 × 比卡鲁胺桥</a>，但不会自动变成个人 T/DHT；受体占有率也不等同临床疗效。</div>
                 <div class="target-effect-domain" id="tdE2Domain">正在载入多尺度输运核心…</div>
                 <div class="target-effect-ref"><a href="https://www.accessdata.fda.gov/drugsatfda_docs/label/2021/020538s037;s039lbl.pdf" target="_blank" rel="noopener noreferrer">VIVELLE-DOT LABEL · POPULATION PK ANCHOR</a></div>
             </div>
