@@ -14,6 +14,9 @@ export interface DrugWithInteraction extends DrugInfo {
   hillEnzyme?: EnzymeInteraction;
 }
 
+export type DrugData = DrugWithInteraction;
+export type DrugDatabase = Record<string, DrugData>;
+
 export interface CYP3A4Factor {
   name: string;
   factor: number;

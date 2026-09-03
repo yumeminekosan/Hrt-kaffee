@@ -21,365 +21,368 @@ var PKPD = (() => {
   // src/lib/index.ts
   var index_exports = {};
   __export(index_exports, {
+    ANDROGENS: () => ANDROGENS,
     BayesianEstimator: () => BayesianEstimator,
     DRUG_DB: () => DRUG_DB,
     OneCompartmentModel: () => OneCompartmentModel,
-    PKPDSimulator: () => PKPDSimulator
+    PKPDSimulator: () => PKPDSimulator,
+    PROGESTOGENS: () => PROGESTOGENS
   });
 
-  // src/lib/pkpd/solvers/EulerMaruyama.ts
-  var EulerMaruyamaSolver = class {
-    constructor(sigma) {
-      this.sigma = sigma;
-    }
-    step(state, CL, Vd, ka, dt, dW) {
-      const ke = CL / Vd;
-      const dA_dep = ka * state.A_depot * dt;
-      let A_depot = state.A_depot - dA_dep;
-      let A_central = state.A_central + dA_dep;
-      const dA_elim = ke * A_central * dt;
-      A_central -= dA_elim;
-      if (this.sigma > 0) {
-        const ito_correction = -0.5 * this.sigma * this.sigma * dt;
-        A_central *= Math.exp(this.sigma * dW + ito_correction);
+  // src/lib/pkpd/solvers/ExactLinear.ts
+  var RATE_EPSILON = 1e-10;
+  var ExactLinearSolver = class {
+    step(state, parameters) {
+      const { CL, Vd, ka, F, dt } = parameters;
+      if (dt < 0 || CL <= 0 || Vd <= 0 || ka <= 0 || F <= 0 || F > 1) {
+        throw new RangeError("ExactLinearSolver requires dt >= 0, positive PK rates, and 0 < F <= 1");
       }
-      return {
-        A_depot: Math.max(0, A_depot),
-        A_central: Math.max(0, A_central)
-      };
-    }
-  };
-
-  // src/lib/pkpd/solvers/Symplectic.ts
-  var SymplecticSolver = class {
-    constructor(sigma) {
-      this.sigma = sigma;
-    }
-    step(state, CL, Vd, ka, dt, dW) {
+      if (dt === 0) return { ...state };
       const ke = CL / Vd;
-      const A_central_half = state.A_central * Math.exp(-ke * dt / 2);
-      const dA_dep = ka * state.A_depot * dt;
-      const A_depot_new = state.A_depot - dA_dep;
-      const A_central_mid = A_central_half + dA_dep;
-      const A_central_new = A_central_mid * Math.exp(-ke * dt / 2);
+      const siteBefore = state.A_site;
+      const centralBefore = state.A_central;
+      const expKa = Math.exp(-ka * dt);
+      const expKe = Math.exp(-ke * dt);
+      const A_site = siteBefore * expKa;
+      const released = siteBefore - A_site;
+      const centralInput = Math.abs(ka - ke) < RATE_EPSILON ? F * ka * siteBefore * dt * expKe : F * ka * siteBefore * (expKa - expKe) / (ke - ka);
+      const A_central = centralBefore * expKe + centralInput;
+      const unavailableIncrement = (1 - F) * released;
+      const eliminatedIncrement = centralBefore + F * released - A_central;
       return {
-        A_depot: Math.max(0, A_depot_new),
-        A_central: Math.max(0, A_central_new)
+        A_site: Math.max(0, A_site),
+        A_central: Math.max(0, A_central),
+        A_unavailable: state.A_unavailable + Math.max(0, unavailableIncrement),
+        A_eliminated: state.A_eliminated + Math.max(0, eliminatedIncrement),
+        A_administered: state.A_administered
       };
     }
   };
 
   // src/lib/pkpd/models/OneCompartment.ts
+  var TIME_EPSILON = 1e-9;
+  var emptyState = () => ({
+    A_site: 0,
+    A_central: 0,
+    A_unavailable: 0,
+    A_eliminated: 0,
+    A_administered: 0
+  });
+  var trapezoid = (t, y) => {
+    let area = 0;
+    for (let i = 1; i < t.length; i++) {
+      area += (t[i] - t[i - 1]) * (y[i] + y[i - 1]) / 2;
+    }
+    return area;
+  };
   var OneCompartmentModel = class {
-    constructor(drug, sdeConfig) {
+    constructor(drug, parameterOverride = {}) {
       this.drug = drug;
-      this.CL = drug.CL;
-      this.Vd = drug.Vd;
-      this.ka = drug.ka;
-      this.F = drug.F;
-      this.solver = sdeConfig.model === "symplectic" ? new SymplecticSolver(sdeConfig.sigma) : new EulerMaruyamaSolver(sdeConfig.sigma);
+      this.solver = new ExactLinearSolver();
+      this.parameters = {
+        CL: parameterOverride.CL ?? drug.CL,
+        Vd: parameterOverride.Vd ?? drug.Vd,
+        ka: parameterOverride.ka ?? drug.ka,
+        F: parameterOverride.F ?? drug.F,
+        activeMoietyFraction: parameterOverride.activeMoietyFraction ?? drug.activeMoietyFraction ?? 1
+      };
+      this.validateParameters();
     }
-    randn() {
-      const u1 = Math.random();
-      const u2 = Math.random();
-      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    validateParameters() {
+      const { CL, Vd, ka, F, activeMoietyFraction } = this.parameters;
+      if (!Number.isFinite(CL) || CL <= 0) throw new RangeError("CL must be positive");
+      if (!Number.isFinite(Vd) || Vd <= 0) throw new RangeError("Vd must be positive");
+      if (!Number.isFinite(ka) || ka <= 0) throw new RangeError("ka must be positive");
+      if (!Number.isFinite(F) || F <= 0 || F > 1) throw new RangeError("F must be in (0, 1]");
+      if (!Number.isFinite(activeMoietyFraction) || activeMoietyFraction <= 0 || activeMoietyFraction > 1) {
+        throw new RangeError("activeMoietyFraction must be in (0, 1]");
+      }
     }
-    toUnit(val) {
-      if (this.drug.unit === "pg/mL") return val * 1e3;
-      if (this.drug.unit === "ng/dL") return val * 100;
-      return val;
+    toDisplayUnit(concentrationNgPerMl) {
+      if (this.drug.unit === "pg/mL") return concentrationNgPerMl * 1e3;
+      if (this.drug.unit === "ng/dL") return concentrationNgPerMl * 100;
+      return concentrationNgPerMl;
     }
-    simulateMultiDose(dose_mg, interval_h, nDoses, totalDuration_h, dt_h) {
-      const n = Math.ceil(totalDuration_h / dt_h);
-      const t = [];
-      const C = [];
-      let state = { A_depot: 0, A_central: 0 };
-      const doseTimes = [];
+    applyDose(state, doseMg) {
+      const activeDoseMicrograms = doseMg * 1e3 * this.parameters.activeMoietyFraction;
+      const next = {
+        ...state,
+        A_administered: state.A_administered + activeDoseMicrograms
+      };
+      if (this.drug.route === "intravenous-bolus") {
+        return {
+          ...next,
+          A_central: next.A_central + activeDoseMicrograms * this.parameters.F,
+          A_unavailable: next.A_unavailable + activeDoseMicrograms * (1 - this.parameters.F)
+        };
+      }
+      return { ...next, A_site: next.A_site + activeDoseMicrograms };
+    }
+    advance(state, dt) {
+      if (dt <= TIME_EPSILON) return state;
+      return this.solver.step(state, { ...this.parameters, dt });
+    }
+    analysisWindow(interval, nDoses, duration) {
+      if (duration <= interval || nDoses <= 1) return [0, duration];
+      const lastCompleteIndex = Math.max(
+        0,
+        Math.min(nDoses - 1, Math.floor((duration - interval + TIME_EPSILON) / interval))
+      );
+      const start = lastCompleteIndex * interval;
+      return [start, Math.min(duration, start + interval)];
+    }
+    outputTimes(dt, interval, nDoses, duration, window) {
+      const times = /* @__PURE__ */ new Set([0, duration, window[0], window[1]]);
+      const steps = Math.ceil(duration / dt);
+      for (let i = 1; i < steps; i++) times.add(Math.min(duration, i * dt));
       for (let d = 0; d < nDoses; d++) {
-        doseTimes.push(d * interval_h);
+        const doseTime = d * interval;
+        if (doseTime <= duration + TIME_EPSILON) times.add(Math.min(duration, doseTime));
       }
-      let lastDoseIdx = -1;
-      for (let i = 0; i < n; i++) {
-        const currentTime = i * dt_h;
-        t.push(currentTime);
-        const doseIdx = doseTimes.findIndex((dt) => Math.abs(currentTime - dt) < dt_h / 2);
-        if (doseIdx !== -1 && doseIdx > lastDoseIdx) {
-          state.A_depot += dose_mg * 1e3 * this.F;
-          lastDoseIdx = doseIdx;
+      return [...times].sort((a, b) => a - b);
+    }
+    simulateMultiDose(doseMg, interval, nDoses, duration, dt) {
+      if (!Number.isFinite(doseMg) || doseMg <= 0) throw new RangeError("dose must be positive");
+      if (!Number.isFinite(interval) || interval <= 0) throw new RangeError("interval must be positive");
+      if (!Number.isInteger(nDoses) || nDoses <= 0) throw new RangeError("nDoses must be a positive integer");
+      if (!Number.isFinite(duration) || duration <= 0) throw new RangeError("duration must be positive");
+      if (!Number.isFinite(dt) || dt <= 0) throw new RangeError("dt must be positive");
+      const analysisWindow = this.analysisWindow(interval, nDoses, duration);
+      const t = this.outputTimes(dt, interval, nDoses, duration, analysisWindow);
+      const C = [];
+      const intervalC = [];
+      let state = emptyState();
+      let currentTime = 0;
+      let nextDoseIndex = 0;
+      for (const targetTime of t) {
+        state = this.advance(state, targetTime - currentTime);
+        currentTime = targetTime;
+        const concentrationBeforeDose = this.toDisplayUnit(
+          state.A_central / this.parameters.Vd
+        );
+        while (nextDoseIndex < nDoses) {
+          const doseTime = nextDoseIndex * interval;
+          if (Math.abs(doseTime - targetTime) > TIME_EPSILON) break;
+          state = this.applyDose(state, doseMg);
+          nextDoseIndex++;
         }
-        const dW = this.randn() * Math.sqrt(dt_h);
-        state = this.solver.step(state, this.CL, this.Vd, this.ka, dt_h, dW);
-        const conc = this.toUnit(state.A_central / this.Vd);
-        C.push(conc);
+        const concentrationAfterDose = this.toDisplayUnit(
+          state.A_central / this.parameters.Vd
+        );
+        C.push(concentrationAfterDose);
+        intervalC.push(
+          targetTime > analysisWindow[0] + TIME_EPSILON && Math.abs(targetTime - analysisWindow[1]) <= TIME_EPSILON ? concentrationBeforeDose : concentrationAfterDose
+        );
       }
-      const steadyStateStart = Math.floor(C.length * 0.75);
-      const steadyStateC = C.slice(steadyStateStart);
-      const validC = steadyStateC.filter((c) => c > 1e-4);
-      const Cmax = Math.max(...steadyStateC);
-      const Cmin = validC.length > 0 ? Math.min(...validC) : 0;
-      const Tmax = t[steadyStateStart + steadyStateC.indexOf(Cmax)];
-      const AUC = C.reduce((sum, c, i) => i === 0 ? 0 : sum + (C[i] + C[i - 1]) * dt_h / 2, 0);
-      return { t, C, Cmax, Cmin, Tmax, AUC };
+      const [windowStart, windowEnd] = analysisWindow;
+      const windowIndices = t.map((time, index) => ({ time, index })).filter(({ time }) => time >= windowStart - TIME_EPSILON && time <= windowEnd + TIME_EPSILON).map(({ index }) => index);
+      const windowT = windowIndices.map((index) => t[index]);
+      const windowC = windowIndices.map((index) => intervalC[index]);
+      const Cmax = Math.max(...windowC);
+      const Cmin = Math.min(...windowC);
+      const peakIndex = windowC.indexOf(Cmax);
+      const Tmax = windowT[peakIndex] - windowStart;
+      const accounted = state.A_site + state.A_central + state.A_unavailable + state.A_eliminated;
+      const massBalanceError = Math.abs(state.A_administered - accounted) / Math.max(1, state.A_administered);
+      return {
+        t,
+        C,
+        Cmax,
+        Cmin,
+        Tmax,
+        AUC: trapezoid(t, C),
+        AUCtau: trapezoid(windowT, windowC),
+        analysisWindow,
+        route: this.drug.route,
+        sampledParameters: { ...this.parameters },
+        massBalanceError
+      };
     }
   };
 
-  // src/lib/gpu/GPUODESolver.ts
-  var GPUODESolver = class {
-    constructor() {
-      this.device = null;
-      this.supported = false;
+  // src/lib/pkpd/random.ts
+  var SeededRandom = class {
+    constructor(seed) {
+      this.spareNormal = null;
+      if (!Number.isFinite(seed)) throw new RangeError("seed must be finite");
+      this.state = seed >>> 0;
     }
-    async init() {
-      if (!navigator.gpu) {
-        return false;
-      }
-      try {
-        const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) return false;
-        this.device = await adapter.requestDevice();
-        this.supported = true;
-        return true;
-      } catch (e) {
-        console.warn("WebGPU initialization failed:", e);
-        return false;
-      }
+    nextUint32() {
+      this.state = this.state + 1831565813 >>> 0;
+      let value = this.state;
+      value = Math.imul(value ^ value >>> 15, value | 1);
+      value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+      return (value ^ value >>> 14) >>> 0;
     }
-    isSupported() {
-      return this.supported && this.device !== null;
+    uniform() {
+      return this.nextUint32() / 4294967296;
     }
-    async solvePK(config) {
-      if (!this.device) {
-        return { Cmax: new Float32Array(0), Cmin: new Float32Array(0), success: false };
+    normal() {
+      if (this.spareNormal !== null) {
+        const value = this.spareNormal;
+        this.spareNormal = null;
+        return value;
       }
-      const shader = `
-      @group(0) @binding(0) var<storage, read> params: array<f32>;
-      @group(0) @binding(1) var<storage, read_write> results: array<f32>;
-
-      @compute @workgroup_size(64)
-      fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-        let idx = global_id.x;
-        let numSims = u32(params[9]);
-
-        if (idx >= numSims) { return; }
-
-        let CL = params[0];
-        let Vd = params[1];
-        let ka = params[2];
-        let F = params[3];
-        let dose = params[4];
-        let interval = params[5];
-        let duration = params[6];
-        let dt = params[7];
-        let sigma = params[8];
-
-        let ke = CL / Vd;
-        let n = u32(duration / dt);
-        let nDoses = u32(duration / interval);
-
-        var A_depot = 0.0;
-        var A_central = 0.0;
-        var Cmax = 0.0;
-        var Cmin = 1e10;
-
-        var seed = f32(idx) * 12345.0;
-
-        for (var i = 0u; i < n; i++) {
-          let t = f32(i) * dt;
-
-          for (var d = 0u; d < nDoses; d++) {
-            if (abs(t - f32(d) * interval) < dt / 2.0) {
-              A_depot += dose * 1000.0 * F;
-            }
-          }
-
-          seed = fract(sin(seed) * 43758.5453);
-          let dW = (seed - 0.5) * 2.0 * sqrt(dt);
-
-          let dA_dep = ka * A_depot * dt;
-          A_depot -= dA_dep;
-          A_central += dA_dep;
-
-          let dA_elim = ke * A_central * dt;
-          A_central -= dA_elim;
-
-          if (sigma > 0.0) {
-            let ito = -0.5 * sigma * sigma * dt;
-            A_central *= exp(sigma * dW + ito);
-          }
-
-          A_depot = max(0.0, A_depot);
-          A_central = max(0.0, A_central);
-
-          let C = A_central / Vd * 1000.0;
-
-          if (i > n / 2u) {
-            Cmax = max(Cmax, C);
-            if (C > 0.0001) {
-              Cmin = min(Cmin, C);
-            }
-          }
-        }
-
-        results[idx * 2u] = Cmax;
-        results[idx * 2u + 1u] = Cmin;
-      }
-    `;
-      const shaderModule = this.device.createShaderModule({ code: shader });
-      const paramsData = new Float32Array([
-        config.CL,
-        config.Vd,
-        config.ka,
-        config.F,
-        config.dose,
-        config.interval,
-        config.duration,
-        config.dt,
-        config.sigma,
-        config.numSims
-      ]);
-      const paramsBuffer = this.device.createBuffer({
-        size: paramsData.byteLength,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-      });
-      this.device.queue.writeBuffer(paramsBuffer, 0, paramsData);
-      const resultsBuffer = this.device.createBuffer({
-        size: config.numSims * 2 * 4,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
-      });
-      const readBuffer = this.device.createBuffer({
-        size: config.numSims * 2 * 4,
-        usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
-      });
-      const bindGroupLayout = this.device.createBindGroupLayout({
-        entries: [
-          { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
-          { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }
-        ]
-      });
-      const bindGroup = this.device.createBindGroup({
-        layout: bindGroupLayout,
-        entries: [
-          { binding: 0, resource: { buffer: paramsBuffer } },
-          { binding: 1, resource: { buffer: resultsBuffer } }
-        ]
-      });
-      const pipelineLayout = this.device.createPipelineLayout({
-        bindGroupLayouts: [bindGroupLayout]
-      });
-      const pipeline = this.device.createComputePipeline({
-        layout: pipelineLayout,
-        compute: { module: shaderModule, entryPoint: "main" }
-      });
-      const commandEncoder = this.device.createCommandEncoder();
-      const passEncoder = commandEncoder.beginComputePass();
-      passEncoder.setPipeline(pipeline);
-      passEncoder.setBindGroup(0, bindGroup);
-      passEncoder.dispatchWorkgroups(Math.ceil(config.numSims / 64));
-      passEncoder.end();
-      commandEncoder.copyBufferToBuffer(resultsBuffer, 0, readBuffer, 0, config.numSims * 2 * 4);
-      this.device.queue.submit([commandEncoder.finish()]);
-      await readBuffer.mapAsync(GPUMapMode.READ);
-      const resultData = new Float32Array(readBuffer.getMappedRange());
-      const Cmax = new Float32Array(config.numSims);
-      const Cmin = new Float32Array(config.numSims);
-      for (let i = 0; i < config.numSims; i++) {
-        Cmax[i] = resultData[i * 2];
-        Cmin[i] = resultData[i * 2 + 1];
-      }
-      readBuffer.unmap();
-      return { Cmax, Cmin, success: true };
+      const u1 = Math.max(Number.MIN_VALUE, this.uniform());
+      const u2 = this.uniform();
+      const radius = Math.sqrt(-2 * Math.log(u1));
+      const angle = 2 * Math.PI * u2;
+      this.spareNormal = radius * Math.sin(angle);
+      return radius * Math.cos(angle);
     }
   };
 
   // src/lib/pkpd/simulator.ts
-  var PKPDSimulator = class {
-    constructor() {
-      this.gpuSolver = null;
-      this.gpuInitialized = false;
+  var DEFAULT_SEED = 1213355083;
+  var DEFAULT_VARIABILITY = {
+    clCV: 0,
+    vdCV: 0,
+    kaCV: 0,
+    fCV: 0,
+    clVdCorrelation: 0
+  };
+  var assertCV = (name, value) => {
+    if (!Number.isFinite(value) || value < 0 || value > 3) {
+      throw new RangeError(`${name} must be a finite fraction between 0 and 3`);
     }
+  };
+  var logNormalSigmaFromCV = (cv) => Math.sqrt(Math.log1p(cv * cv));
+  var logNormalFactor = (rng, cv) => cv === 0 ? 1 : Math.exp(logNormalSigmaFromCV(cv) * rng.normal());
+  var logistic = (value) => 1 / (1 + Math.exp(-value));
+  var logit = (value) => Math.log(value / (1 - value));
+  var boundedFraction = (rng, typical, cv) => {
+    if (cv === 0 || typical === 1) return typical;
+    const logitSD = logNormalSigmaFromCV(cv) / Math.max(1e-6, 1 - typical);
+    return logistic(logit(typical) + logitSD * rng.normal());
+  };
+  var percentile = (values, probability) => {
+    if (values.length === 0) throw new RangeError("percentile requires at least one value");
+    const sorted = [...values].sort((a, b) => a - b);
+    const position = (sorted.length - 1) * probability;
+    const lower = Math.floor(position);
+    const upper = Math.ceil(position);
+    if (lower === upper) return sorted[lower];
+    return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+  };
+  var summarize = (values) => {
+    if (values.length === 0) throw new RangeError("summary requires at least one result");
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const variance = values.length > 1 ? values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1) : 0;
+    return {
+      median: percentile(values, 0.5),
+      p05: percentile(values, 0.05),
+      p25: percentile(values, 0.25),
+      p75: percentile(values, 0.75),
+      p95: percentile(values, 0.95),
+      mean,
+      standardError: Math.sqrt(variance / values.length)
+    };
+  };
+  var PKPDSimulator = class {
+    /**
+     * Kept for compatibility with the old page controller. The former shader
+     * used a non-normal pseudo-random increment and returned incomplete exposure
+     * summaries, so audited simulations deliberately stay on the CPU.
+     */
     async initGPU() {
-      if (this.gpuInitialized) return this.gpuSolver?.isSupported() || false;
-      this.gpuSolver = new GPUODESolver();
-      this.gpuInitialized = await this.gpuSolver.init();
-      return this.gpuInitialized;
+      return false;
     }
     isGPUAvailable() {
-      return this.gpuSolver?.isSupported() || false;
+      return false;
     }
-    simulate(config) {
-      const model = new OneCompartmentModel(config.drug, config.sde);
+    doseCount(config) {
+      if (config.interval <= 0 || config.duration <= 0) {
+        throw new RangeError("interval and duration must be positive");
+      }
+      return Math.max(1, Math.ceil(config.duration / config.interval));
+    }
+    simulateParameters(config, parameters) {
+      const model = new OneCompartmentModel(config.drug, parameters);
       return model.simulateMultiDose(
         config.dose,
         config.interval,
-        Math.ceil(config.duration / config.interval),
+        this.doseCount(config),
         config.duration,
         config.dt
       );
     }
-    async monteCarloSimulation(config, numSims = 100) {
-      if (this.gpuSolver?.isSupported()) {
-        try {
-          const gpuResult = await this.gpuSolver.solvePK({
-            CL: config.drug.CL,
-            Vd: config.drug.Vd,
-            ka: config.drug.ka,
-            F: config.drug.F,
-            dose: config.dose,
-            interval: config.interval,
-            duration: config.duration,
-            dt: config.dt,
-            sigma: config.sde.sigma,
-            numSims
-          });
-          if (gpuResult.success) {
-            const results2 = [];
-            for (let i = 0; i < numSims; i++) {
-              results2.push({
-                t: [],
-                C: [],
-                Cmax: gpuResult.Cmax[i],
-                Cmin: gpuResult.Cmin[i],
-                Tmax: 0,
-                AUC: 0
-              });
-            }
-            return results2;
-          }
-        } catch (e) {
-          console.warn("GPU simulation failed, falling back to CPU:", e);
-        }
+    simulate(config) {
+      return this.simulateParameters(config, {});
+    }
+    resolveVariability(config) {
+      const variability = {
+        ...DEFAULT_VARIABILITY,
+        ...config.drug.variability,
+        ...config.population
+      };
+      assertCV("clCV", variability.clCV);
+      assertCV("vdCV", variability.vdCV);
+      assertCV("kaCV", variability.kaCV);
+      assertCV("fCV", variability.fCV);
+      const rho = variability.clVdCorrelation ?? 0;
+      if (!Number.isFinite(rho) || rho < -0.99 || rho > 0.99) {
+        throw new RangeError("clVdCorrelation must be between -0.99 and 0.99");
       }
+      return { ...variability, clVdCorrelation: rho };
+    }
+    sampleParameters(config, variability, rng) {
+      const zCL = rng.normal();
+      const rho = variability.clVdCorrelation ?? 0;
+      const zVd = rho * zCL + Math.sqrt(1 - rho * rho) * rng.normal();
+      const clSigma = logNormalSigmaFromCV(variability.clCV);
+      const vdSigma = logNormalSigmaFromCV(variability.vdCV);
+      return {
+        CL: config.drug.CL * (variability.clCV === 0 ? 1 : Math.exp(clSigma * zCL)),
+        Vd: config.drug.Vd * (variability.vdCV === 0 ? 1 : Math.exp(vdSigma * zVd)),
+        ka: config.drug.ka * logNormalFactor(rng, variability.kaCV),
+        F: boundedFraction(rng, config.drug.F, variability.fCV),
+        activeMoietyFraction: config.drug.activeMoietyFraction ?? 1
+      };
+    }
+    addObservationError(latent, error, rng) {
+      if (!error || error.model === "none") return void 0;
+      const additiveSD = error.additiveSD ?? 0;
+      const proportionalCV = error.proportionalCV ?? 0;
+      assertCV("proportionalCV", proportionalCV);
+      if (!Number.isFinite(additiveSD) || additiveSD < 0) {
+        throw new RangeError("additiveSD must be finite and non-negative");
+      }
+      const proportionalSigma = logNormalSigmaFromCV(proportionalCV);
+      return latent.map((value) => {
+        const proportional = error.model === "proportional" || error.model === "combined" ? value * Math.exp(proportionalSigma * rng.normal() - 0.5 * proportionalSigma ** 2) : value;
+        const additive = error.model === "additive" || error.model === "combined" ? additiveSD * rng.normal() : 0;
+        return Math.max(0, proportional + additive);
+      });
+    }
+    async monteCarloSimulation(config, numSims = config.numSimulations ?? 100) {
+      if (!Number.isInteger(numSims) || numSims <= 0 || numSims > 1e5) {
+        throw new RangeError("numSims must be an integer between 1 and 100000");
+      }
+      const variability = this.resolveVariability(config);
+      const masterRng = new SeededRandom(config.seed ?? DEFAULT_SEED);
       const results = [];
       for (let i = 0; i < numSims; i++) {
-        results.push(this.simulate(config));
+        const seed = masterRng.nextUint32();
+        const rng = new SeededRandom(seed);
+        const sampledParameters = config.mode === "deterministic" ? {
+          CL: config.drug.CL,
+          Vd: config.drug.Vd,
+          ka: config.drug.ka,
+          F: config.drug.F,
+          activeMoietyFraction: config.drug.activeMoietyFraction ?? 1
+        } : this.sampleParameters(config, variability, rng);
+        const result = this.simulateParameters(config, sampledParameters);
+        const observedC = this.addObservationError(result.C, config.observationError, rng);
+        results.push({ ...result, observedC, seed });
       }
       return results;
     }
     calculateStatistics(results) {
-      const allCmax = results.map((r) => r.Cmax);
-      const allCmin = results.map((r) => r.Cmin);
-      const allAUC = results.map((r) => r.AUC);
-      const percentile = (arr, p) => {
-        const sorted = [...arr].sort((a, b) => a - b);
-        const idx = Math.floor(sorted.length * p / 100);
-        return sorted[idx];
-      };
       return {
-        Cmax: {
-          median: percentile(allCmax, 50),
-          p25: percentile(allCmax, 25),
-          p75: percentile(allCmax, 75)
-        },
-        Cmin: {
-          median: percentile(allCmin, 50),
-          p25: percentile(allCmin, 25),
-          p75: percentile(allCmin, 75)
-        },
-        AUC: {
-          median: percentile(allAUC, 50),
-          p25: percentile(allAUC, 25),
-          p75: percentile(allAUC, 75)
-        }
+        Cmax: summarize(results.map((result) => result.Cmax)),
+        Cmin: summarize(results.map((result) => result.Cmin)),
+        Tmax: summarize(results.map((result) => result.Tmax)),
+        AUCtau: summarize(results.map((result) => result.AUCtau))
       };
     }
   };
@@ -388,6 +391,8 @@ var PKPD = (() => {
   var DRUG_DB = {
     E2_oral: {
       name: "Estradiol Oral",
+      route: "oral",
+      parameterization: "population",
       therapeutic: [50, 200],
       unit: "pg/mL",
       CL: 60,
@@ -404,22 +409,27 @@ var PKPD = (() => {
     },
     E2V_oral: {
       name: "Estradiol Valerate Oral",
+      route: "oral",
+      parameterization: "population",
       therapeutic: [50, 200],
       unit: "pg/mL",
       CL: 60,
       Vd: 60,
       ka: 0.04,
       F: 0.03,
+      activeMoietyFraction: 0.764,
       halfLife: 1,
       halfLifeApparent: 17,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 2,
       defaultInterval: 12,
-      ref: "PMID: 1548642"
+      ref: "PMID: 9793623"
     },
     E2_subl: {
       name: "Estradiol Sublingual",
+      route: "sublingual",
+      parameterization: "illustrative",
       therapeutic: [50, 200],
       unit: "pg/mL",
       CL: 15,
@@ -435,6 +445,8 @@ var PKPD = (() => {
     },
     E2_td: {
       name: "Estradiol Transdermal Patch",
+      route: "transdermal",
+      parameterization: "population",
       therapeutic: [50, 200],
       unit: "pg/mL",
       CL: 10,
@@ -450,6 +462,8 @@ var PKPD = (() => {
     },
     E2_td_gel: {
       name: "Estradiol Transdermal Gel",
+      route: "transdermal",
+      parameterization: "illustrative",
       therapeutic: [50, 200],
       unit: "pg/mL",
       CL: 12,
@@ -465,12 +479,15 @@ var PKPD = (() => {
     },
     E2V: {
       name: "Estradiol Valerate IM",
+      route: "intramuscular-depot",
+      parameterization: "population",
       therapeutic: [100, 400],
       unit: "pg/mL",
       CL: 100,
       Vd: 2400,
       ka: 0.012,
       F: 0.85,
+      activeMoietyFraction: 0.764,
       halfLife: 120,
       doseUnit: "mg",
       intervalUnit: "h",
@@ -480,93 +497,197 @@ var PKPD = (() => {
     },
     E2C: {
       name: "Estradiol Cypionate IM",
+      route: "intramuscular-depot",
+      parameterization: "illustrative",
       therapeutic: [100, 400],
       unit: "pg/mL",
-      CL: 80,
-      Vd: 3e3,
-      ka: 8e-3,
+      CL: 120,
+      Vd: 2800,
+      ka: 6e-3,
       F: 0.9,
+      activeMoietyFraction: 0.687,
       halfLife: 192,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 5,
-      defaultInterval: 336,
-      ref: "PMID: 28838353"
+      defaultInterval: 168,
+      ref: "Illustrative parameters; route evidence PMID: 10640167"
     },
-    EEn: {
+    E2E: {
       name: "Estradiol Enanthate IM",
+      route: "intramuscular-depot",
+      parameterization: "illustrative",
       therapeutic: [100, 400],
       unit: "pg/mL",
-      CL: 90,
-      Vd: 2700,
-      ka: 0.01,
-      F: 0.88,
-      halfLife: 168,
+      CL: 5,
+      Vd: 2500,
+      ka: 4e-3,
+      F: 0.92,
+      activeMoietyFraction: 0.708,
+      halfLife: 240,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 5,
       defaultInterval: 168,
-      ref: "PMID: 28838353"
+      ref: "Illustrative parameterization; no individualized calibration"
     },
     MPA_oral: {
       name: "Medroxyprogesterone Acetate Oral",
+      route: "oral",
+      parameterization: "population",
       therapeutic: [1, 10],
       unit: "ng/mL",
-      CL: 50,
-      Vd: 200,
-      ka: 1.5,
-      F: 0.9,
-      halfLife: 24,
+      CL: 20,
+      Vd: 35,
+      ka: 1.2,
+      F: 0.95,
+      halfLife: 30,
       doseUnit: "mg",
       intervalUnit: "h",
-      defaultDose: 5,
+      defaultDose: 10,
       defaultInterval: 24,
-      ref: "PMID: 6336623"
+      ref: "DrugBank DB00603 | Pfizer PROVERA"
     },
     CPA_oral: {
       name: "Cyproterone Acetate Oral",
+      route: "oral",
+      parameterization: "population",
       therapeutic: [50, 300],
       unit: "ng/mL",
-      CL: 3.5,
-      Vd: 350,
-      ka: 0.5,
-      F: 0.85,
-      halfLife: 48,
+      CL: 5,
+      Vd: 3,
+      ka: 0.8,
+      F: 0.88,
+      halfLife: 60,
       doseUnit: "mg",
       intervalUnit: "h",
-      defaultDose: 12.5,
+      defaultDose: 25,
       defaultInterval: 24,
       ref: "PMID: 3127499"
     },
     TEST_En: {
       name: "Testosterone Enanthate IM",
+      route: "intramuscular-depot",
+      parameterization: "population",
       therapeutic: [300, 1e3],
       unit: "ng/dL",
-      CL: 50,
-      Vd: 1500,
+      CL: 80,
+      Vd: 1900,
       ka: 0.015,
-      F: 0.95,
+      F: 0.65,
+      activeMoietyFraction: 0.72,
+      halfLife: 96,
+      doseUnit: "mg",
+      intervalUnit: "h",
+      defaultDose: 100,
+      defaultInterval: 168,
+      ref: "PMC4721027 | PMC9293229"
+    },
+    TEST_Cy: {
+      name: "Testosterone Cypionate IM",
+      route: "intramuscular-depot",
+      parameterization: "illustrative",
+      therapeutic: [300, 1e3],
+      unit: "ng/dL",
+      CL: 6,
+      Vd: 900,
+      ka: 0.012,
+      F: 0.65,
+      activeMoietyFraction: 0.699,
       halfLife: 120,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 100,
       defaultInterval: 168,
-      ref: "PMID: 15476439"
+      ref: "Illustrative parameterization; no individualized calibration"
+    }
+  };
+
+  // src/lib/drugs/progestogens.ts
+  var PROGESTOGENS = {
+    MPA_oral: {
+      name: "Medroxyprogesterone Acetate Oral",
+      route: "oral",
+      therapeutic: [0.5, 3],
+      unit: "ng/mL",
+      CL: 20,
+      Vd: 35,
+      ka: 1.2,
+      F: 0.95,
+      halfLife: 30,
+      doseUnit: "mg",
+      intervalUnit: "h",
+      defaultDose: 10,
+      defaultInterval: 24,
+      cyp3a4: true,
+      isProgestogen: true,
+      hillEnzyme: {
+        enzyme: "CYP3A4",
+        Ki: 2.5,
+        IC50: 5,
+        hillCoef: 1,
+        mechanism: "substrate_weak_inhibitor"
+      },
+      ref: "DrugBank DB00603"
     },
-    TEST_Cy: {
-      name: "Testosterone Cypionate IM",
+    CPA_oral: {
+      name: "Cyproterone Acetate Oral",
+      route: "oral",
+      therapeutic: [20, 300],
+      unit: "ng/mL",
+      CL: 5,
+      Vd: 3,
+      ka: 0.8,
+      F: 0.88,
+      halfLife: 60,
+      doseUnit: "mg",
+      intervalUnit: "h",
+      defaultDose: 25,
+      defaultInterval: 24,
+      cyp3a4: true,
+      isProgestogen: true,
+      hillEnzyme: {
+        enzyme: "CYP3A4",
+        Ki: 0.8,
+        IC50: 1.5,
+        hillCoef: 1.2,
+        mechanism: "substrate_moderate_inhibitor"
+      },
+      ref: "PMID: 8131397 | DrugBank DB04839"
+    }
+  };
+  var ANDROGENS = {
+    TEST_En: {
+      name: "Testosterone Enanthate IM",
+      route: "intramuscular-depot",
       therapeutic: [300, 1e3],
       unit: "ng/dL",
-      CL: 45,
-      Vd: 1600,
-      ka: 0.013,
-      F: 0.95,
-      halfLife: 144,
+      CL: 80,
+      Vd: 1900,
+      ka: 0.015,
+      F: 0.65,
+      halfLife: 96,
       doseUnit: "mg",
       intervalUnit: "h",
       defaultDose: 100,
       defaultInterval: 168,
-      ref: "PMID: 15476439"
+      ref: "PMC4721027 | PMC9293229"
+    },
+    TEST_Cy: {
+      name: "Testosterone Cypionate IM",
+      route: "intramuscular-depot",
+      therapeutic: [300, 1e3],
+      unit: "ng/dL",
+      CL: 6,
+      Vd: 900,
+      ka: 0.012,
+      F: 0.65,
+      halfLife: 120,
+      doseUnit: "mg",
+      intervalUnit: "h",
+      defaultDose: 100,
+      defaultInterval: 168,
+      ref: "Clinical data"
     }
   };
 

@@ -3,6 +3,7 @@ import type { DrugWithInteraction } from './types';
 export const PROGESTOGENS: Record<string, DrugWithInteraction> = {
   MPA_oral: {
     name: 'Medroxyprogesterone Acetate Oral',
+    route: 'oral',
     therapeutic: [0.5, 3],
     unit: 'ng/mL',
     CL: 20,
@@ -27,6 +28,7 @@ export const PROGESTOGENS: Record<string, DrugWithInteraction> = {
   },
   CPA_oral: {
     name: 'Cyproterone Acetate Oral',
+    route: 'oral',
     therapeutic: [20, 300],
     unit: 'ng/mL',
     CL: 5,
@@ -54,6 +56,7 @@ export const PROGESTOGENS: Record<string, DrugWithInteraction> = {
 export const ANDROGENS: Record<string, DrugWithInteraction> = {
   TEST_En: {
     name: 'Testosterone Enanthate IM',
+    route: 'intramuscular-depot',
     therapeutic: [300, 1000],
     unit: 'ng/dL',
     CL: 80,
@@ -69,6 +72,7 @@ export const ANDROGENS: Record<string, DrugWithInteraction> = {
   },
   TEST_Cy: {
     name: 'Testosterone Cypionate IM',
+    route: 'intramuscular-depot',
     therapeutic: [300, 1000],
     unit: 'ng/dL',
     CL: 6,

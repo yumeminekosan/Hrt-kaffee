@@ -1,5 +1,10 @@
 # FJÖRÐUR 代码冗余项检查报告
 
+> Historical audit only (superseded 2026-09-03). The experimental
+> `advanced-sde-methods.js` and `integration-patch.js` paths described below
+> have been removed from deployment. Current PK scope and rejection gates are
+> defined in [`ar-kotlin/docs/PK_ROUTE_MONTE_CARLO.md`](ar-kotlin/docs/PK_ROUTE_MONTE_CARLO.md).
+
 ## 检查范围
 - 文件: `index.html` (主模拟器)
 - 新增文件: `advanced-sde-methods.js` (Master + Fokker-Planck + Langevin + Path Integral)

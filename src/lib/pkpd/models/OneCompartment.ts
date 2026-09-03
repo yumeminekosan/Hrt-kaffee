@@ -1,85 +1,203 @@
-import type { DrugInfo, SDEConfig, SimulationResult } from '../types';
-import { EulerMaruyamaSolver, SymplecticSolver } from '../solvers';
-import type { ODESolver } from '../solvers/types';
+import type {
+  DrugInfo,
+  SampledPKParameters,
+  SimulationResult
+} from '../types';
+import { ExactLinearSolver } from '../solvers';
+import type { PKState } from '../solvers';
 
+const TIME_EPSILON = 1e-9;
+
+const emptyState = (): PKState => ({
+  A_site: 0,
+  A_central: 0,
+  A_unavailable: 0,
+  A_eliminated: 0,
+  A_administered: 0
+});
+
+const trapezoid = (t: number[], y: number[]): number => {
+  let area = 0;
+  for (let i = 1; i < t.length; i++) {
+    area += (t[i] - t[i - 1]) * (y[i] + y[i - 1]) / 2;
+  }
+  return area;
+};
+
+/**
+ * Route-aware extravascular/IV one-compartment model.
+ *
+ * Oral, sublingual, transdermal, IM-depot, and SC-depot routes share the same
+ * declared first-order input topology but keep their route identity and
+ * parameters explicit. IV bolus enters the central compartment directly.
+ * No Hamiltonian, financial-volatility, or uncalibrated state-noise process is
+ * attached to this dissipative mass-balance model.
+ */
 export class OneCompartmentModel {
-  private solver: ODESolver;
-  private drug: DrugInfo;
-  private CL: number;
-  private Vd: number;
-  private ka: number;
-  private F: number;
+  private readonly solver = new ExactLinearSolver();
+  private readonly parameters: SampledPKParameters;
 
-  constructor(drug: DrugInfo, sdeConfig: SDEConfig) {
-    this.drug = drug;
-    this.CL = drug.CL;
-    this.Vd = drug.Vd;
-    this.ka = drug.ka;
-    this.F = drug.F;
-
-    this.solver = sdeConfig.model === 'symplectic'
-      ? new SymplecticSolver(sdeConfig.sigma)
-      : new EulerMaruyamaSolver(sdeConfig.sigma);
+  constructor(
+    private readonly drug: DrugInfo,
+    parameterOverride: Partial<SampledPKParameters> = {}
+  ) {
+    this.parameters = {
+      CL: parameterOverride.CL ?? drug.CL,
+      Vd: parameterOverride.Vd ?? drug.Vd,
+      ka: parameterOverride.ka ?? drug.ka,
+      F: parameterOverride.F ?? drug.F,
+      activeMoietyFraction: parameterOverride.activeMoietyFraction
+        ?? drug.activeMoietyFraction
+        ?? 1
+    };
+    this.validateParameters();
   }
 
-  private randn(): number {
-    const u1 = Math.random();
-    const u2 = Math.random();
-    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  private validateParameters(): void {
+    const { CL, Vd, ka, F, activeMoietyFraction } = this.parameters;
+    if (!Number.isFinite(CL) || CL <= 0) throw new RangeError('CL must be positive');
+    if (!Number.isFinite(Vd) || Vd <= 0) throw new RangeError('Vd must be positive');
+    if (!Number.isFinite(ka) || ka <= 0) throw new RangeError('ka must be positive');
+    if (!Number.isFinite(F) || F <= 0 || F > 1) throw new RangeError('F must be in (0, 1]');
+    if (!Number.isFinite(activeMoietyFraction) || activeMoietyFraction <= 0 || activeMoietyFraction > 1) {
+      throw new RangeError('activeMoietyFraction must be in (0, 1]');
+    }
   }
 
-  private toUnit(val: number): number {
-    if (this.drug.unit === 'pg/mL') return val * 1000;
-    if (this.drug.unit === 'ng/dL') return val * 100;
-    return val;
+  private toDisplayUnit(concentrationNgPerMl: number): number {
+    if (this.drug.unit === 'pg/mL') return concentrationNgPerMl * 1000;
+    if (this.drug.unit === 'ng/dL') return concentrationNgPerMl * 100;
+    return concentrationNgPerMl;
+  }
+
+  private applyDose(state: PKState, doseMg: number): PKState {
+    const activeDoseMicrograms = doseMg * 1000 * this.parameters.activeMoietyFraction;
+    const next = {
+      ...state,
+      A_administered: state.A_administered + activeDoseMicrograms
+    };
+
+    if (this.drug.route === 'intravenous-bolus') {
+      return {
+        ...next,
+        A_central: next.A_central + activeDoseMicrograms * this.parameters.F,
+        A_unavailable: next.A_unavailable + activeDoseMicrograms * (1 - this.parameters.F)
+      };
+    }
+
+    return { ...next, A_site: next.A_site + activeDoseMicrograms };
+  }
+
+  private advance(state: PKState, dt: number): PKState {
+    if (dt <= TIME_EPSILON) return state;
+    return this.solver.step(state, { ...this.parameters, dt });
+  }
+
+  private analysisWindow(interval: number, nDoses: number, duration: number): [number, number] {
+    if (duration <= interval || nDoses <= 1) return [0, duration];
+    const lastCompleteIndex = Math.max(
+      0,
+      Math.min(nDoses - 1, Math.floor((duration - interval + TIME_EPSILON) / interval))
+    );
+    const start = lastCompleteIndex * interval;
+    return [start, Math.min(duration, start + interval)];
+  }
+
+  private outputTimes(
+    dt: number,
+    interval: number,
+    nDoses: number,
+    duration: number,
+    window: [number, number]
+  ): number[] {
+    const times = new Set<number>([0, duration, window[0], window[1]]);
+    const steps = Math.ceil(duration / dt);
+    for (let i = 1; i < steps; i++) times.add(Math.min(duration, i * dt));
+    for (let d = 0; d < nDoses; d++) {
+      const doseTime = d * interval;
+      if (doseTime <= duration + TIME_EPSILON) times.add(Math.min(duration, doseTime));
+    }
+    return [...times].sort((a, b) => a - b);
   }
 
   simulateMultiDose(
-    dose_mg: number,
-    interval_h: number,
+    doseMg: number,
+    interval: number,
     nDoses: number,
-    totalDuration_h: number,
-    dt_h: number
+    duration: number,
+    dt: number
   ): SimulationResult {
-    const n = Math.ceil(totalDuration_h / dt_h);
-    const t: number[] = [];
+    if (!Number.isFinite(doseMg) || doseMg <= 0) throw new RangeError('dose must be positive');
+    if (!Number.isFinite(interval) || interval <= 0) throw new RangeError('interval must be positive');
+    if (!Number.isInteger(nDoses) || nDoses <= 0) throw new RangeError('nDoses must be a positive integer');
+    if (!Number.isFinite(duration) || duration <= 0) throw new RangeError('duration must be positive');
+    if (!Number.isFinite(dt) || dt <= 0) throw new RangeError('dt must be positive');
+
+    const analysisWindow = this.analysisWindow(interval, nDoses, duration);
+    const t = this.outputTimes(dt, interval, nDoses, duration, analysisWindow);
     const C: number[] = [];
+    const intervalC: number[] = [];
+    let state = emptyState();
+    let currentTime = 0;
+    let nextDoseIndex = 0;
 
-    let state = { A_depot: 0, A_central: 0 };
+    for (const targetTime of t) {
+      // Dose times are part of the output grid, so the state can first be
+      // advanced exactly to the event. Keep the left limit for an interval
+      // endpoint: an IV bolus at the next interval boundary must not inflate
+      // the preceding interval's Cmax/AUCtau.
+      state = this.advance(state, targetTime - currentTime);
+      currentTime = targetTime;
+      const concentrationBeforeDose = this.toDisplayUnit(
+        state.A_central / this.parameters.Vd
+      );
 
-    const doseTimes: number[] = [];
-    for (let d = 0; d < nDoses; d++) {
-      doseTimes.push(d * interval_h);
-    }
-
-    let lastDoseIdx = -1;
-
-    for (let i = 0; i < n; i++) {
-      const currentTime = i * dt_h;
-      t.push(currentTime);
-
-      const doseIdx = doseTimes.findIndex(dt => Math.abs(currentTime - dt) < dt_h / 2);
-      if (doseIdx !== -1 && doseIdx > lastDoseIdx) {
-        state.A_depot += dose_mg * 1000 * this.F;
-        lastDoseIdx = doseIdx;
+      while (nextDoseIndex < nDoses) {
+        const doseTime = nextDoseIndex * interval;
+        if (Math.abs(doseTime - targetTime) > TIME_EPSILON) break;
+        state = this.applyDose(state, doseMg);
+        nextDoseIndex++;
       }
 
-      const dW = this.randn() * Math.sqrt(dt_h);
-      state = this.solver.step(state, this.CL, this.Vd, this.ka, dt_h, dW);
-
-      const conc = this.toUnit(state.A_central / this.Vd);
-      C.push(conc);
+      const concentrationAfterDose = this.toDisplayUnit(
+        state.A_central / this.parameters.Vd
+      );
+      C.push(concentrationAfterDose);
+      intervalC.push(
+        targetTime > analysisWindow[0] + TIME_EPSILON
+          && Math.abs(targetTime - analysisWindow[1]) <= TIME_EPSILON
+          ? concentrationBeforeDose
+          : concentrationAfterDose
+      );
     }
 
-    const steadyStateStart = Math.floor(C.length * 0.75);
-    const steadyStateC = C.slice(steadyStateStart);
-    const validC = steadyStateC.filter(c => c > 0.0001);
+    const [windowStart, windowEnd] = analysisWindow;
+    const windowIndices = t
+      .map((time, index) => ({ time, index }))
+      .filter(({ time }) => time >= windowStart - TIME_EPSILON && time <= windowEnd + TIME_EPSILON)
+      .map(({ index }) => index);
+    const windowT = windowIndices.map(index => t[index]);
+    const windowC = windowIndices.map(index => intervalC[index]);
+    const Cmax = Math.max(...windowC);
+    const Cmin = Math.min(...windowC);
+    const peakIndex = windowC.indexOf(Cmax);
+    const Tmax = windowT[peakIndex] - windowStart;
+    const accounted = state.A_site + state.A_central + state.A_unavailable + state.A_eliminated;
+    const massBalanceError = Math.abs(state.A_administered - accounted)
+      / Math.max(1, state.A_administered);
 
-    const Cmax = Math.max(...steadyStateC);
-    const Cmin = validC.length > 0 ? Math.min(...validC) : 0;
-    const Tmax = t[steadyStateStart + steadyStateC.indexOf(Cmax)];
-    const AUC = C.reduce((sum, c, i) => i === 0 ? 0 : sum + (C[i] + C[i - 1]) * dt_h / 2, 0);
-
-    return { t, C, Cmax, Cmin, Tmax, AUC };
+    return {
+      t,
+      C,
+      Cmax,
+      Cmin,
+      Tmax,
+      AUC: trapezoid(t, C),
+      AUCtau: trapezoid(windowT, windowC),
+      analysisWindow,
+      route: this.drug.route,
+      sampledParameters: { ...this.parameters },
+      massBalanceError
+    };
   }
 }

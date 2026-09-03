@@ -37,6 +37,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: "9.5.0"
+      - name: Verify route-aware PK bundle and rigor ledger
+        run: |
+          npm ci --ignore-scripts
+          npm run db:generate
+          npx tsc -p tsconfig.lib.json --noEmit
+          npm run build:pkpd
+          git diff --exit-code -- public/pkpd-bundle.js public/pkpd-bundle.js.map
+          npm run test:pkpd-audit
       - name: Verify exact browser/JVM parity and build Wasm
         working-directory: ar-kotlin
         run: >-
@@ -49,7 +57,7 @@ jobs:
       - name: Assemble Pages site
         run: |
           node --check public/mascots/kaffee-cats.js
-          node --test tests/mascot-assets.test.mjs tests/bicalutamide-module.test.mjs
+          node --test tests/mascot-assets.test.mjs tests/bicalutamide-module.test.mjs tests/pkpd-route-monte-carlo.test.mjs tests/rigor-coverage.test.mjs
           mkdir -p _site/ar _site/kinetics
           cp -R public/. _site/
           cp public/pkpd-simulator-v3.html _site/index.html

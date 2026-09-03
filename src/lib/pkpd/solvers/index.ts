@@ -1,4 +1,2 @@
-export { EulerMaruyamaSolver } from './EulerMaruyama';
-export { SymplecticSolver } from './Symplectic';
-export { StratonovichSolver } from './Stratonovich';
-export type { ODESolver, PKState } from './types';
+export { ExactLinearSolver } from './ExactLinear';
+export type { LinearPKStep, PKSolver, PKState } from './types';

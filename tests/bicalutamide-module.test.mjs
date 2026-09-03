@@ -65,7 +65,7 @@ test('every source-library question has a row-level disposition', () => {
   assert.equal(
     (coverage.match(/^\| (?:M|B|S|ST|MD|QC|PK|BM|PD|T|SP|STATS|FORM|PC|SYS)\d{2} \|/gm) ?? [])
       .length,
-    103,
+    107,
   );
   assert.match(coverage, /不可打绿的验收门/);
 });

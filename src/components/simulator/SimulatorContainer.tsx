@@ -32,7 +32,15 @@ export function SimulatorContainer() {
       interval,
       duration: 1008,
       dt: 0.1,
-      sde: { sigma, model: 'sde' as const }
+      mode: 'population' as const,
+      population: {
+        clCV: sigma,
+        vdCV: sigma * 0.5,
+        kaCV: sigma,
+        fCV: sigma * 0.5,
+        clVdCorrelation: 0.3
+      },
+      seed: 121266053
     };
 
     const { results: simResults, usedGPU: gpu } = await runSimulation(config, numSims);
