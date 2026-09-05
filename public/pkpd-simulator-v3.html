@@ -1406,7 +1406,7 @@
                     <div id="concentrationDataContainer" style="max-height: 150px; overflow-y: auto;">
                         <div class="conc-data-header">
                             <span>Time (h)</span>
-                            <span>Conc (pg/mL)</span>
+                            <span id="bayesianConcentrationUnit">Conc (pg/mL)</span>
                             <span>Action</span>
                         </div>
                         <div id="concentrationDataRows">
@@ -1414,48 +1414,53 @@
                         </div>
                     </div>
                     <div class="info-box" style="margin-top: 0.5rem;">
-                        Enter time since last dose and measured concentration
+                        Time is measured from the first modelled dose. Every scheduled repeat dose is included.
                     </div>
                 </div>
                 
                 <!-- Prior Distribution Settings -->
                 <div class="param-group">
                     <div class="param-group-title">
-                        <span>Prior Distributions (Log-Normal)</span>
+                        <span>Transformed Priors (log / logit)</span>
                     </div>
                     <div class="form-row-3">
                         <div class="form-group">
                             <label class="form-label">CL Prior</label>
                             <input type="number" class="form-input" id="priorCL" value="60" step="1">
-                            <span class="form-hint">L/h, CV=30%</span>
+                            <span class="form-hint">median L/h, CV=30%</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Vd Prior</label>
                             <input type="number" class="form-input" id="priorVd" value="60" step="1">
-                            <span class="form-hint">L, CV=30%</span>
+                            <span class="form-hint">median L, CV=30%</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">ka Prior</label>
                             <input type="number" class="form-input" id="priorKa" value="0.04" step="0.01">
-                            <span class="form-hint">1/h, CV=50%</span>
+                            <span class="form-hint">median 1/h, CV=50%</span>
                         </div>
                     </div>
                     <div class="form-row-3">
                         <div class="form-group">
                             <label class="form-label">F Prior</label>
                             <input type="number" class="form-input" id="priorF" value="0.03" step="0.005">
-                            <span class="form-hint">Bioavailability</span>
+                            <span class="form-hint">median; logit SD=0.6</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">σ Error</label>
+                            <label class="form-label">Residual CV</label>
                             <input type="number" class="form-input" id="bayesianSigma" value="0.2" step="0.05">
-                            <span class="form-hint">Measurement CV</span>
+                            <span class="form-hint">fixed log-normal model</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Iterations</label>
-                            <input type="number" class="form-input" id="mcmcIterations" value="5000" step="1000">
-                            <span class="form-hint">MCMC steps</span>
+                            <input type="number" class="form-input" id="mcmcIterations" value="1500" step="500" min="100">
+                            <span class="form-hint">retained / chain; 4 chains</span>
                         </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label class="form-label">Seed</label>
+                        <input type="number" class="form-input" id="mcmcSeed" value="129625" step="1">
+                        <span class="form-hint">reproducible chains and PPC</span>
                     </div>
                 </div>
                 
@@ -1498,17 +1503,22 @@
                             </div>
                         </div>
                         <div class="info-box" style="margin-top: 0.5rem;">
-                            <strong>MCMC Diagnostics:</strong>
+                            <strong>Multi-chain diagnostics:</strong>
                             <div id="mcmcDiagnostics">-</div>
                         </div>
+                        <div class="info-box" style="margin-top: 0.5rem;">
+                            <strong>Posterior predictive check:</strong>
+                            <div id="posteriorPredictiveDiagnostics">-</div>
+                        </div>
+                        <div class="info-box" id="mcmcApplyGate" style="margin-top: 0.5rem;">Run required diagnostics before applying exploratory parameters.</div>
                     </div>
-                    <button class="btn btn-primary" onclick="applyBayesianParams()" style="width: 100%; margin-top: 0.5rem;">
-                        Apply to Simulator
+                    <button class="btn btn-primary" id="applyBayesianBtn" onclick="applyBayesianParams()" disabled style="width: 100%; margin-top: 0.5rem;">
+                        Apply exploratory inputs
                     </button>
                 </div>
                 
                 <div class="pg-ref" id="bayesianRef">
-                    Bayesian estimation using Metropolis-Hastings MCMC
+                    Four seeded chains · transformed positive parameters · R-hat / bulk-tail ESS / autocorrelation / PPC. Research only; no individual dosing claim.
                 </div>
             </div>
 
@@ -2260,7 +2270,6 @@
         // Math Utilities
         // ============================================
         const MathUtils = {
-            randn: () => Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random()),
             percentile: (arr, p) => {
                 const sorted = arr.slice().sort((a, b) => a - b);
                 const position = p / 100 * (sorted.length - 1);
@@ -2272,8 +2281,7 @@
                 let s = 0;
                 for (let i = 1; i < x.length; i++) s += (x[i] - x[i-1]) * (y[i] + y[i-1]) / 2;
                 return s;
-            },
-            mean: (arr) => arr.reduce((s, v) => s + v, 0) / arr.length
+            }
         };
 
         // ============================================
@@ -3000,246 +3008,229 @@
         });
     
         // =====================================================
-        // BAYESIAN PK PARAMETER ESTIMATION MODULE
-        // Uses MCMC (Metropolis-Hastings) for parameter estimation
+        // AUDITED BAYESIAN PK MODULE
         // =====================================================
-        
+
+        const BAYESIAN_PARAMETER_NAMES = ['CL', 'Vd', 'ka', 'F'];
         let concentrationData = [];
         let bayesianResults = null;
-        
-        // Add a concentration data row
+        let bayesianRunResult = null;
+        let bayesianCanApply = false;
+        let concentrationRowCounter = 0;
+
         function addConcentrationRow(time = '', conc = '') {
             const container = document.getElementById('concentrationDataRows');
-            const rowId = Date.now();
-            
+            const rowId = 'mcmc-row-' + (++concentrationRowCounter);
             const row = document.createElement('div');
             row.className = 'conc-data-row';
-            row.id = `conc-row-${rowId}`;
-            row.innerHTML = `
-                <input type="number" placeholder="0" step="0.1" value="${time}" class="conc-time">
-                <input type="number" placeholder="0" step="1" value="${conc}" class="conc-value">
-                <button onclick="removeConcentrationRow(${rowId})">×</button>
-            `;
+            row.id = rowId;
+            row.innerHTML =
+                '<input type="number" placeholder="0" min="0" step="0.1" value="' + time + '" class="conc-time">' +
+                '<input type="number" placeholder="0" min="0" step="1" value="' + conc + '" class="conc-value">' +
+                '<button type="button" data-remove-row="' + rowId + '">×</button>';
+            row.querySelector('[data-remove-row]').addEventListener('click', () => removeConcentrationRow(rowId));
             container.appendChild(row);
         }
-        
+
         function removeConcentrationRow(rowId) {
-            const row = document.getElementById(`conc-row-${rowId}`);
+            const row = document.getElementById(rowId);
             if (row) row.remove();
         }
-        
+
+        function resetBayesianGate(message) {
+            bayesianCanApply = false;
+            const applyButton = document.getElementById('applyBayesianBtn');
+            applyButton.disabled = true;
+            document.getElementById('mcmcApplyGate').textContent = message;
+        }
+
         function clearBayesianData() {
             document.getElementById('concentrationDataRows').innerHTML = '';
             document.getElementById('bayesianResults').style.display = 'none';
             concentrationData = [];
             bayesianResults = null;
+            bayesianRunResult = null;
+            resetBayesianGate('Run required diagnostics before applying exploratory parameters.');
         }
-        
-        // Collect concentration data from UI
+
         function collectConcentrationData() {
-            const rows = document.querySelectorAll('.conc-data-row');
             const data = [];
-            rows.forEach(row => {
+            document.querySelectorAll('.conc-data-row').forEach(row => {
                 const time = parseFloat(row.querySelector('.conc-time').value);
-                const conc = parseFloat(row.querySelector('.conc-value').value);
-                if (!isNaN(time) && !isNaN(conc) && conc > 0) {
-                    data.push({ time, conc });
+                const concentration = parseFloat(row.querySelector('.conc-value').value);
+                if (Number.isFinite(time) && time >= 0 &&
+                    Number.isFinite(concentration) && concentration > 0) {
+                    data.push({ time, concentration });
                 }
             });
-            return data.sort((a, b) => a.time - b.time);
+            return data.sort((left, right) => left.time - right.time);
         }
-        
-        // One-compartment oral PK model
-        function pkModel(params, dose, times) {
-            const { CL, Vd, ka, F } = params;
-            const ke = CL / Vd;
-            const dose_ug = dose * 1000 * F; // mg to microg with bioavailability
-            
-            const concentrations = [];
-            for (const t of times) {
-                if (t <= 0) {
-                    concentrations.push(0);
-                } else {
-                    let C;
-                    if (Math.abs(ka - ke) < 0.0001) {
-                        C = (dose_ug * ka * t * Math.exp(-ka * t)) / Vd;
-                    } else {
-                        C = (dose_ug * ka / (Vd * (ka - ke))) * (Math.exp(-ke * t) - Math.exp(-ka * t));
-                    }
-                    concentrations.push(Math.max(0, C * 1000000)); // μg/mL to pg/mL (1μg = 1000000pg)
-                }
+
+        function syncBayesianDrugDefaults(resetDose = true) {
+            const key = document.getElementById('bayesianDrugSelect').value;
+            const drug = DRUG_DB[key];
+            if (!drug) return;
+            document.getElementById('priorCL').value = drug.CL;
+            document.getElementById('priorVd').value = drug.Vd;
+            document.getElementById('priorKa').value = drug.ka;
+            document.getElementById('priorF').value = drug.F;
+            document.getElementById('bayesianConcentrationUnit').textContent =
+                'Conc (' + drug.unit + ')';
+            if (resetDose) {
+                document.getElementById('bayesianDose').value = drug.defaultDose;
+                document.getElementById('bayesianInterval').value = drug.defaultInterval;
             }
-            return concentrations;
+            resetBayesianGate('Drug or prior changed; rerun all four chains.');
         }
-        
-        // Log-likelihood for concentration data
-        function logLikelihood(params, dose, data, sigma) {
-            const times = data.map(d => d.time);
-            const observed = data.map(d => d.conc);
-            const predicted = pkModel(params, dose, times);
-            
-            let ll = 0;
-            for (let i = 0; i < data.length; i++) {
-                const pred = Math.max(0.1, predicted[i]);
-                const obs = observed[i];
-                ll += -0.5 * Math.pow((Math.log(obs) - Math.log(pred)) / sigma, 2) - Math.log(sigma) - Math.log(obs);
-            }
-            return ll;
+
+        function renderMCMCDiagnostics(result) {
+            const requiredESS = 100 * result.chains.length;
+            const rows = BAYESIAN_PARAMETER_NAMES.map(name => {
+                const diagnostic = result.diagnostics.byParameter[name];
+                const lagOne = diagnostic.autocorrelation.find(item => item.lag === 1)?.value;
+                const green = Number.isFinite(diagnostic.rhat) && diagnostic.rhat <= 1.05 &&
+                    diagnostic.bulkESS >= requiredESS && diagnostic.tailESS >= requiredESS;
+                return '<tr><td>' + name + '</td><td>' + diagnostic.rhat.toFixed(3) +
+                    '</td><td>' + diagnostic.bulkESS.toFixed(0) +
+                    '</td><td>' + diagnostic.tailESS.toFixed(0) +
+                    '</td><td>' + (lagOne === undefined ? '—' : lagOne.toFixed(3)) +
+                    '</td><td>' + (green ? 'GREEN' : 'BLOCK') + '</td></tr>';
+            }).join('');
+            const rates = result.acceptanceByChain
+                .map(rate => (rate * 100).toFixed(1) + '%')
+                .join(' / ');
+            const warnings = result.diagnostics.warnings.length
+                ? '<br><strong>BLOCK:</strong> ' + result.diagnostics.warnings.join(' ')
+                : '<br><strong>GREEN:</strong> R-hat ≤ 1.05 and bulk/tail ESS ≥ ' + requiredESS + '.';
+            document.getElementById('mcmcDiagnostics').innerHTML =
+                '<table style="width:100%;font-size:0.58rem"><thead><tr>' +
+                '<th>Param</th><th>R-hat</th><th>bulk ESS</th><th>tail ESS</th><th>AC(1)</th><th>Gate</th>' +
+                '</tr></thead><tbody>' + rows + '</tbody></table>' +
+                'Acceptance by chain: ' + rates + warnings;
         }
-        
-        // Log-prior for parameters (log-normal priors)
-        function logPrior(params, priors) {
-            let lp = 0;
-            const paramNames = ['CL', 'Vd', 'ka', 'F'];
-            
-            for (const name of paramNames) {
-                const value = params[name];
-                const prior = priors[name];
-                
-                if (value <= 0) return -Infinity;
-                
-                const logValue = Math.log(value);
-                const logMean = Math.log(prior.mean);
-                const cv = prior.cv;
-                
-                lp += -0.5 * Math.pow((logValue - logMean) / cv, 2) - Math.log(cv);
-            }
-            return lp;
+
+        function renderPosteriorPredictive(result, unit) {
+            const ppc = result.posteriorPredictive;
+            document.getElementById('posteriorPredictiveDiagnostics').textContent =
+                '95% coverage=' + (ppc.coverage95 * 100).toFixed(1) + '% | ' +
+                'Bayesian p=' + ppc.bayesianPValue.toFixed(3) + ' | ' +
+                'median RMSE=' + ppc.rmseMedian.toFixed(2) + ' ' + unit + ' | ' +
+                'replicates=' + ppc.draws;
         }
-        
-        // Metropolis-Hastings MCMC
-        function runMCMC(data, priors, dose, nIter, sigma) {
-            let current = {
-                CL: priors.CL.mean,
-                Vd: priors.Vd.mean,
-                ka: priors.ka.mean,
-                F: priors.F.mean
-            };
-            
-            let currentLL = logLikelihood(current, dose, data, sigma);
-            let currentLP = logPrior(current, priors);
-            let currentPosterior = currentLL + currentLP;
-            
-            const samples = { CL: [], Vd: [], ka: [], F: [] };
-            const proposalSD = { CL: 5, Vd: 10, ka: 0.01, F: 0.01 };
-            let accepted = 0;
-            
-            for (let i = 0; i < nIter; i++) {
-                const paramNames = ['CL', 'Vd', 'ka', 'F'];
-                
-                for (const name of paramNames) {
-                    const proposed = { ...current };
-                    proposed[name] = current[name] * Math.exp(proposalSD[name] / current[name] * MathUtils.randn());
-                    
-                    const proposedLL = logLikelihood(proposed, dose, data, sigma);
-                    const proposedLP = logPrior(proposed, priors);
-                    const proposedPosterior = proposedLL + proposedLP;
-                    
-                    const logAlpha = proposedPosterior - currentPosterior;
-                    
-                    if (Math.log(Math.random()) < logAlpha) {
-                        current = proposed;
-                        currentLL = proposedLL;
-                        currentLP = proposedLP;
-                        currentPosterior = proposedPosterior;
-                        accepted++;
-                    }
-                }
-                
-                if (i >= nIter * 0.2) {
-                    samples.CL.push(current.CL);
-                    samples.Vd.push(current.Vd);
-                    samples.ka.push(current.ka);
-                    samples.F.push(current.F);
-                }
-            }
-            
-            return { samples, acceptanceRate: accepted / (nIter * 4) };
-        }
-        
-        // Calculate posterior statistics
-        function calcPosteriorStats(samples) {
-            const stats = {};
-            for (const [name, values] of Object.entries(samples)) {
-                const sorted = values.slice().sort((a, b) => a - b);
-                const n = sorted.length;
-                
-                stats[name] = {
-                    mean: values.reduce((a, b) => a + b, 0) / n,
-                    median: sorted[Math.floor(n / 2)],
-                    ci2_5: sorted[Math.floor(n * 0.025)],
-                    ci97_5: sorted[Math.floor(n * 0.975)]
-                };
-            }
-            return stats;
-        }
-        
-        // Main Bayesian estimation function
+
         async function runBayesianEstimation() {
             const data = collectConcentrationData();
-            
             if (data.length < 2) {
-                alert('Please enter at least 2 concentration measurements');
+                alert('Enter at least two positive concentration measurements.');
                 return;
             }
-            
+
             const btn = document.getElementById('bayesianRunBtn');
-            btn.textContent = 'RUNNING...';
+            btn.textContent = 'RUNNING 4 CHAINS...';
             btn.disabled = true;
-            
-            await new Promise(r => setTimeout(r, 50));
-            
-            const dose = parseFloat(document.getElementById('bayesianDose').value);
-            const nIter = parseInt(document.getElementById('mcmcIterations').value);
-            const sigma = parseFloat(document.getElementById('bayesianSigma').value);
-            
-            const priors = {
-                CL: { mean: parseFloat(document.getElementById('priorCL').value), cv: 0.3 },
-                Vd: { mean: parseFloat(document.getElementById('priorVd').value), cv: 0.3 },
-                ka: { mean: parseFloat(document.getElementById('priorKa').value), cv: 0.5 },
-                F: { mean: parseFloat(document.getElementById('priorF').value), cv: 0.3 }
-            };
-            
-            const mcmcResult = runMCMC(data, priors, dose, nIter, sigma);
-            bayesianResults = calcPosteriorStats(mcmcResult.samples);
-            
-            const paramUnits = { CL: 'L/h', Vd: 'L', ka: '1/h', F: '' };
-            
-            for (const [name, stats] of Object.entries(bayesianResults)) {
-                const unit = paramUnits[name];
-                const precision = (name === 'ka' || name === 'F') ? 4 : 1;
-                document.getElementById(`posterior${name}`).textContent = 
-                    stats.median.toFixed(precision) + ' ' + unit;
-                document.getElementById(`posterior${name}CI`).textContent = 
-                    '[' + stats.ci2_5.toFixed(precision) + ', ' + stats.ci97_5.toFixed(precision) + ']';
+            document.getElementById('bayesianResults').style.display = 'none';
+            resetBayesianGate('Sampling and diagnostics in progress...');
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            try {
+                if (typeof PKPD === 'undefined' || !PKPD.BayesianEstimator) {
+                    throw new Error('Audited Bayesian bundle not loaded');
+                }
+                const drugKey = document.getElementById('bayesianDrugSelect').value;
+                const drug = DRUG_DB[drugKey];
+                const dose = parseFloat(document.getElementById('bayesianDose').value);
+                const interval = parseFloat(document.getElementById('bayesianInterval').value);
+                const draws = parseInt(document.getElementById('mcmcIterations').value, 10);
+                const residualCV = parseFloat(document.getElementById('bayesianSigma').value);
+                const seed = parseInt(document.getElementById('mcmcSeed').value, 10);
+                if (!drug || !Number.isFinite(dose) || dose <= 0 ||
+                    !Number.isFinite(interval) || interval <= 0 ||
+                    !Number.isInteger(draws) || draws < 100 || draws > 25000 ||
+                    !Number.isFinite(residualCV) || residualCV <= 0 || residualCV > 3 ||
+                    !Number.isFinite(seed)) {
+                    throw new Error('Require positive dose/interval, 100–25000 draws, residual CV in (0,3], and a finite seed.');
+                }
+
+                const estimator = new PKPD.BayesianEstimator({
+                    observedData: data,
+                    drug,
+                    dose,
+                    interval,
+                    priors: {
+                        CL: { median: parseFloat(document.getElementById('priorCL').value), cv: 0.30 },
+                        Vd: { median: parseFloat(document.getElementById('priorVd').value), cv: 0.30 },
+                        ka: { median: parseFloat(document.getElementById('priorKa').value), cv: 0.50 },
+                        F: { median: parseFloat(document.getElementById('priorF').value), logitSD: 0.60 }
+                    },
+                    observationError: {
+                        model: 'lognormal-proportional',
+                        proportionalCV: residualCV
+                    },
+                    seed
+                });
+                const result = estimator.runMCMC({
+                    chains: 4,
+                    warmup: Math.max(500, Math.floor(draws / 2)),
+                    draws,
+                    posteriorPredictiveDraws: Math.min(500, Math.max(100, draws))
+                });
+                bayesianRunResult = result;
+                bayesianResults = result.posteriorStats;
+                concentrationData = data;
+
+                const paramUnits = { CL: 'L/h', Vd: 'L', ka: '1/h', F: '' };
+                for (const name of BAYESIAN_PARAMETER_NAMES) {
+                    const stats = bayesianResults[name];
+                    const precision = name === 'ka' || name === 'F' ? 4 : 1;
+                    document.getElementById('posterior' + name).textContent =
+                        stats.median.toFixed(precision) + ' ' + paramUnits[name];
+                    document.getElementById('posterior' + name + 'CI').textContent =
+                        '95% CrI [' + stats.ci95[0].toFixed(precision) + ', ' +
+                        stats.ci95[1].toFixed(precision) + ']';
+                }
+
+                renderMCMCDiagnostics(result);
+                renderPosteriorPredictive(result, drug.unit);
+                const ppcGreen = result.posteriorPredictive.bayesianPValue >= 0.05 &&
+                    result.posteriorPredictive.bayesianPValue <= 0.95;
+                bayesianCanApply = result.diagnostics.converged && ppcGreen;
+                document.getElementById('applyBayesianBtn').disabled = !bayesianCanApply;
+                document.getElementById('mcmcApplyGate').textContent = bayesianCanApply
+                    ? 'GREEN review gate: chain and PPC diagnostics passed. Applying remains exploratory, not a dose recommendation.'
+                    : 'BLOCKED: parameters cannot be applied until every R-hat/ESS gate and the PPC p-value gate passes.';
+                document.getElementById('bayesianResults').style.display = 'block';
+            } catch (error) {
+                bayesianRunResult = null;
+                bayesianResults = null;
+                resetBayesianGate('BLOCKED: ' + (error instanceof Error ? error.message : String(error)));
+                alert(error instanceof Error ? error.message : String(error));
+            } finally {
+                btn.textContent = 'RUN MCMC';
+                btn.disabled = false;
             }
-            
-            document.getElementById('mcmcDiagnostics').innerHTML = 
-                'Acceptance: ' + (mcmcResult.acceptanceRate * 100).toFixed(1) + '% | ' +
-                'Samples: ' + mcmcResult.samples.CL.length + ' | ' +
-                'Data points: ' + data.length;
-            
-            document.getElementById('bayesianResults').style.display = 'block';
-            btn.textContent = 'RUN MCMC';
-            btn.disabled = false;
         }
-        
-        // Apply estimated parameters to simulator
+
         function applyBayesianParams() {
-            if (!bayesianResults) {
-                alert('Run Bayesian estimation first');
+            if (!bayesianResults || !bayesianRunResult || !bayesianCanApply) {
+                alert('Application is blocked until all multi-chain and posterior-predictive gates are green.');
                 return;
             }
-            
+
+            const drugKey = document.getElementById('bayesianDrugSelect').value;
+            const mainDrug = document.getElementById('hormoneSelect');
+            mainDrug.value = drugKey;
+            updateDrugParams();
             document.getElementById('clInput').value = bayesianResults.CL.median.toFixed(1);
             document.getElementById('vdInput').value = bayesianResults.Vd.median.toFixed(1);
             document.getElementById('kaInput').value = bayesianResults.ka.median.toFixed(4);
-            document.getElementById('fInput').value = bayesianResults.F.median.toFixed(3);
-            
-            alert('Parameters applied! Click RUN SIMULATION to use the new values.');
+            document.getElementById('fInput').value = bayesianResults.F.median.toFixed(4);
+
+            alert('Exploratory posterior medians applied. This is not individualized dosing or clinical validation.');
         }
-        
-        // Initialize with some sample data rows
+
+        document.getElementById('bayesianDrugSelect')
+            .addEventListener('change', () => syncBayesianDrugDefaults(true));
+        syncBayesianDrugDefaults(true);
         addConcentrationRow(4, 150);
         addConcentrationRow(8, 100);
         addConcentrationRow(12, 60);

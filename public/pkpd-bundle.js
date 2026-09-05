@@ -26,7 +26,8 @@ var PKPD = (() => {
     DRUG_DB: () => DRUG_DB,
     OneCompartmentModel: () => OneCompartmentModel,
     PKPDSimulator: () => PKPDSimulator,
-    PROGESTOGENS: () => PROGESTOGENS
+    PROGESTOGENS: () => PROGESTOGENS,
+    calculateChainDiagnostics: () => calculateChainDiagnostics
   });
 
   // src/lib/pkpd/solvers/ExactLinear.ts
@@ -121,6 +122,36 @@ var PKPD = (() => {
     advance(state, dt) {
       if (dt <= TIME_EPSILON) return state;
       return this.solver.step(state, { ...this.parameters, dt });
+    }
+    /**
+     * Exact superposition at arbitrary observation times. This avoids rounding
+     * blood-sample times onto an integration grid inside the Bayesian module.
+     */
+    predictAtTimes(doseMg, interval, nDoses, times) {
+      if (!Number.isFinite(doseMg) || doseMg <= 0) throw new RangeError("dose must be positive");
+      if (!Number.isFinite(interval) || interval <= 0) throw new RangeError("interval must be positive");
+      if (!Number.isInteger(nDoses) || nDoses <= 0) throw new RangeError("nDoses must be a positive integer");
+      if (times.some((time) => !Number.isFinite(time) || time < 0)) {
+        throw new RangeError("observation times must be finite and non-negative");
+      }
+      const { CL, Vd, ka, F, activeMoietyFraction } = this.parameters;
+      const ke = CL / Vd;
+      const activeDoseMicrograms = doseMg * 1e3 * activeMoietyFraction;
+      return times.map((time) => {
+        let centralAmount = 0;
+        for (let doseIndex = 0; doseIndex < nDoses; doseIndex++) {
+          const elapsed = time - doseIndex * interval;
+          if (elapsed < -TIME_EPSILON) break;
+          if (this.drug.route === "intravenous-bolus") {
+            centralAmount += activeDoseMicrograms * F * Math.exp(-ke * Math.max(0, elapsed));
+          } else if (Math.abs(ka - ke) < 1e-10) {
+            centralAmount += activeDoseMicrograms * F * ka * Math.max(0, elapsed) * Math.exp(-ke * Math.max(0, elapsed));
+          } else {
+            centralAmount += activeDoseMicrograms * F * ka * (Math.exp(-ka * Math.max(0, elapsed)) - Math.exp(-ke * Math.max(0, elapsed))) / (ke - ka);
+          }
+        }
+        return this.toDisplayUnit(Math.max(0, centralAmount) / Vd);
+      });
     }
     analysisWindow(interval, nDoses, duration) {
       if (duration <= interval || nDoses <= 1) return [0, duration];
@@ -266,16 +297,16 @@ var PKPD = (() => {
   };
   var summarize = (values) => {
     if (values.length === 0) throw new RangeError("summary requires at least one result");
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    const variance = values.length > 1 ? values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1) : 0;
+    const mean2 = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const variance2 = values.length > 1 ? values.reduce((sum, value) => sum + (value - mean2) ** 2, 0) / (values.length - 1) : 0;
     return {
       median: percentile(values, 0.5),
       p05: percentile(values, 0.05),
       p25: percentile(values, 0.25),
       p75: percentile(values, 0.75),
       p95: percentile(values, 0.95),
-      mean,
-      standardError: Math.sqrt(variance / values.length)
+      mean: mean2,
+      standardError: Math.sqrt(variance2 / values.length)
     };
   };
   var PKPDSimulator = class {
@@ -692,119 +723,486 @@ var PKPD = (() => {
   };
 
   // src/lib/bayesian/mcmc.ts
+  var LOG_TWO_PI = Math.log(2 * Math.PI);
+  var DEFAULT_SEED2 = 1296256323;
+  var PARAMETER_NAMES = ["CL", "Vd", "ka", "F"];
+  var mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  var variance = (values, sample = true) => {
+    if (values.length < (sample ? 2 : 1)) return 0;
+    const center = mean(values);
+    const denominator = sample ? values.length - 1 : values.length;
+    return values.reduce((sum, value) => sum + (value - center) ** 2, 0) / denominator;
+  };
+  var percentile2 = (values, probability) => {
+    if (values.length === 0) throw new RangeError("percentile requires samples");
+    const sorted = [...values].sort((a, b) => a - b);
+    const position = (sorted.length - 1) * probability;
+    const lower = Math.floor(position);
+    const upper = Math.ceil(position);
+    if (lower === upper) return sorted[lower];
+    return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+  };
+  var clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
+  var logit2 = (value) => Math.log(value / (1 - value));
+  var logistic2 = (value) => 1 / (1 + Math.exp(-value));
+  var logNormalSD = (cv) => Math.sqrt(Math.log1p(cv * cv));
+  var inverseNormal = (probability) => {
+    const p = clamp(probability, Number.EPSILON, 1 - Number.EPSILON);
+    const a = [
+      -39.69683028665376,
+      220.9460984245205,
+      -275.9285104469687,
+      138.357751867269,
+      -30.66479806614716,
+      2.506628277459239
+    ];
+    const b = [
+      -54.47609879822406,
+      161.5858368580409,
+      -155.6989798598866,
+      66.80131188771972,
+      -13.28068155288572
+    ];
+    const c = [
+      -0.007784894002430293,
+      -0.3223964580411365,
+      -2.400758277161838,
+      -2.549732539343734,
+      4.374664141464968,
+      2.938163982698783
+    ];
+    const d = [
+      0.007784695709041462,
+      0.3224671290700398,
+      2.445134137142996,
+      3.754408661907416
+    ];
+    const low = 0.02425;
+    const high = 1 - low;
+    if (p < low) {
+      const q2 = Math.sqrt(-2 * Math.log(p));
+      return (((((c[0] * q2 + c[1]) * q2 + c[2]) * q2 + c[3]) * q2 + c[4]) * q2 + c[5]) / ((((d[0] * q2 + d[1]) * q2 + d[2]) * q2 + d[3]) * q2 + 1);
+    }
+    if (p > high) {
+      const q2 = Math.sqrt(-2 * Math.log(1 - p));
+      return -(((((c[0] * q2 + c[1]) * q2 + c[2]) * q2 + c[3]) * q2 + c[4]) * q2 + c[5]) / ((((d[0] * q2 + d[1]) * q2 + d[2]) * q2 + d[3]) * q2 + 1);
+    }
+    const q = p - 0.5;
+    const r = q * q;
+    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  };
+  var splitChains = (chains) => {
+    if (chains.length < 2) throw new RangeError("diagnostics require multiple chains");
+    const length = Math.min(...chains.map((chain) => chain.length));
+    const half = Math.floor(length / 2);
+    if (half < 2) throw new RangeError("diagnostics require at least four draws per chain");
+    return chains.flatMap((chain) => [
+      chain.slice(0, half),
+      chain.slice(length - half, length)
+    ]);
+  };
+  var rankNormalize = (chains) => {
+    const lengths = chains.map((chain) => chain.length);
+    const pooled = chains.flat();
+    const ordered = pooled.map((value, index) => ({ value, index })).sort((left, right) => left.value - right.value);
+    const ranks = new Array(pooled.length);
+    for (let start = 0; start < ordered.length; ) {
+      let end = start + 1;
+      while (end < ordered.length && ordered[end].value === ordered[start].value) end++;
+      const averageRank = (start + 1 + end) / 2;
+      for (let i = start; i < end; i++) ranks[ordered[i].index] = averageRank;
+      start = end;
+    }
+    const normalized = ranks.map(
+      (rank) => inverseNormal((rank - 3 / 8) / (pooled.length + 1 / 4))
+    );
+    let offset = 0;
+    return lengths.map((length) => {
+      const chain = normalized.slice(offset, offset + length);
+      offset += length;
+      return chain;
+    });
+  };
+  var basicRhat = (chains) => {
+    const chainLength = chains[0].length;
+    const within = mean(chains.map((chain) => variance(chain)));
+    const between = chainLength * variance(chains.map((chain) => mean(chain)));
+    if (within === 0) return between === 0 ? 1 : Number.POSITIVE_INFINITY;
+    const variancePlus = (chainLength - 1) / chainLength * within + between / chainLength;
+    return Math.sqrt(Math.max(0, variancePlus / within));
+  };
+  var effectiveSampleSize = (chains) => {
+    const chainCount = chains.length;
+    const chainLength = chains[0].length;
+    const total = chainCount * chainLength;
+    const chainMeans = chains.map((chain) => mean(chain));
+    const within = mean(chains.map((chain) => variance(chain)));
+    const between = chainLength * variance(chainMeans);
+    const variancePlus = (chainLength - 1) / chainLength * within + between / chainLength;
+    if (variancePlus <= Number.EPSILON) return total;
+    const autocorrelation = [1];
+    for (let lag = 1; lag < chainLength; lag++) {
+      const meanAutocovariance = mean(chains.map((chain, chainIndex) => {
+        let covariance = 0;
+        for (let i = 0; i < chainLength - lag; i++) {
+          covariance += (chain[i] - chainMeans[chainIndex]) * (chain[i + lag] - chainMeans[chainIndex]);
+        }
+        return covariance / chainLength;
+      }));
+      autocorrelation.push(1 - (within - meanAutocovariance) / variancePlus);
+    }
+    const pairs = [];
+    for (let pair = 0; pair * 2 + 1 < autocorrelation.length; pair++) {
+      const value = autocorrelation[pair * 2] + autocorrelation[pair * 2 + 1];
+      if (pair > 0 && value < 0) break;
+      pairs.push(value);
+    }
+    for (let i = 1; i < pairs.length; i++) pairs[i] = Math.min(pairs[i], pairs[i - 1]);
+    const tau = Math.max(1, -1 + 2 * pairs.reduce((sum, value) => sum + value, 0));
+    return Math.min(total, total / tau);
+  };
+  var averageAutocorrelation = (chains, maxLag) => {
+    const length = Math.min(...chains.map((chain) => chain.length));
+    const requested = [1, 5, 10, 20, 50].filter((lag, index, values) => lag <= maxLag && lag < length && values.indexOf(lag) === index);
+    return requested.map((lag) => ({
+      lag,
+      value: mean(chains.map((chain) => {
+        const center = mean(chain);
+        const denominator = chain.reduce((sum, value) => sum + (value - center) ** 2, 0);
+        if (denominator <= Number.EPSILON) return 0;
+        let numerator = 0;
+        for (let i = 0; i < chain.length - lag; i++) {
+          numerator += (chain[i] - center) * (chain[i + lag] - center);
+        }
+        return numerator / denominator;
+      }))
+    }));
+  };
+  var calculateChainDiagnostics = (chains, maxAutocorrelationLag = 50) => {
+    const split = splitChains(chains);
+    const ranked = rankNormalize(split);
+    const pooled = split.flat();
+    const center = percentile2(pooled, 0.5);
+    const foldedRanked = rankNormalize(split.map(
+      (chain) => chain.map((value) => Math.abs(value - center))
+    ));
+    const lower = percentile2(pooled, 0.05);
+    const upper = percentile2(pooled, 0.95);
+    const lowerIndicators = split.map((chain) => chain.map((value) => value <= lower ? 1 : 0));
+    const upperIndicators = split.map((chain) => chain.map((value) => value >= upper ? 1 : 0));
+    return {
+      rhat: Math.max(basicRhat(ranked), basicRhat(foldedRanked)),
+      bulkESS: effectiveSampleSize(ranked),
+      tailESS: Math.min(
+        effectiveSampleSize(lowerIndicators),
+        effectiveSampleSize(upperIndicators)
+      ),
+      autocorrelation: averageAutocorrelation(chains, maxAutocorrelationLag)
+    };
+  };
+  var emptyChain = (seed) => ({
+    CL: [],
+    Vd: [],
+    ka: [],
+    F: [],
+    logLikelihood: [],
+    logPosterior: [],
+    acceptance: 0,
+    seed
+  });
   var BayesianEstimator = class {
     constructor(config) {
+      this.validateConfig(config);
       this.config = config;
+      this.observations = [...config.observedData].sort((left, right) => left.time - right.time);
+      this.priorCenters = [
+        Math.log(config.priors.CL.median),
+        Math.log(config.priors.Vd.median),
+        Math.log(config.priors.ka.median),
+        logit2(config.priors.F.median)
+      ];
+      this.priorSDs = [
+        logNormalSD(config.priors.CL.cv),
+        logNormalSD(config.priors.Vd.cv),
+        logNormalSD(config.priors.ka.cv),
+        config.priors.F.logitSD
+      ];
+      const lastObservation = Math.max(...this.observations.map((observation) => observation.time));
+      this.nDoses = config.nDoses ?? Math.floor((lastObservation + 1e-9) / config.interval) + 1;
+      this.observationLogSD = logNormalSD(config.observationError.proportionalCV);
     }
-    randn() {
-      const u1 = Math.random();
-      const u2 = Math.random();
-      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-    }
-    pkModel(CL, Vd, ka) {
-      const { dose, interval, nDoses, duration, dt, F } = this.config;
-      const n = Math.ceil(duration / dt);
-      const C = [];
-      let A_depot = 0;
-      let A_central = 0;
-      const ke = CL / Vd;
-      const doseTimes = [];
-      for (let d = 0; d < nDoses; d++) {
-        doseTimes.push(d * interval);
+    validateConfig(config) {
+      if (config.observedData.length < 2) {
+        throw new RangeError("at least two observed concentrations are required");
       }
-      let lastDoseIdx = -1;
-      for (let i = 0; i < n; i++) {
-        const currentTime = i * dt;
-        const doseIdx = doseTimes.findIndex((t) => Math.abs(currentTime - t) < dt / 2);
-        if (doseIdx !== -1 && doseIdx > lastDoseIdx) {
-          A_depot += dose * 1e3 * F;
-          lastDoseIdx = doseIdx;
+      for (const observation of config.observedData) {
+        if (!Number.isFinite(observation.time) || observation.time < 0) {
+          throw new RangeError("observation times must be finite and non-negative");
         }
-        const dA_depot = -ka * A_depot * dt;
-        const dA_central = (ka * A_depot - ke * A_central) * dt;
-        A_depot += dA_depot;
-        A_central += dA_central;
-        C.push(A_central / Vd);
-      }
-      return C;
-    }
-    logLikelihood(CL, Vd, ka) {
-      const predicted = this.pkModel(CL, Vd, ka);
-      const { observedData, dt } = this.config;
-      let logLik = 0;
-      const sigma = 10;
-      for (const obs of observedData) {
-        const idx = Math.round(obs.time / dt);
-        if (idx >= 0 && idx < predicted.length) {
-          const pred = predicted[idx];
-          const residual = obs.concentration - pred;
-          logLik -= 0.5 * (residual * residual) / (sigma * sigma);
+        if (!Number.isFinite(observation.concentration) || observation.concentration <= 0) {
+          throw new RangeError("observed concentrations must be finite and positive");
         }
       }
-      return logLik;
+      if (!Number.isFinite(config.dose) || config.dose <= 0) throw new RangeError("dose must be positive");
+      if (!Number.isFinite(config.interval) || config.interval <= 0) {
+        throw new RangeError("interval must be positive");
+      }
+      if (config.nDoses !== void 0 && (!Number.isInteger(config.nDoses) || config.nDoses <= 0)) {
+        throw new RangeError("nDoses must be a positive integer");
+      }
+      for (const name of ["CL", "Vd", "ka"]) {
+        const prior = config.priors[name];
+        if (!Number.isFinite(prior.median) || prior.median <= 0) {
+          throw new RangeError(`${name} prior median must be positive`);
+        }
+        if (!Number.isFinite(prior.cv) || prior.cv <= 0 || prior.cv > 3) {
+          throw new RangeError(`${name} prior CV must be in (0, 3]`);
+        }
+      }
+      const fPrior = config.priors.F;
+      if (!Number.isFinite(fPrior.median) || fPrior.median <= 0 || fPrior.median >= 1) {
+        throw new RangeError("F prior median must be in (0, 1)");
+      }
+      if (!Number.isFinite(fPrior.logitSD) || fPrior.logitSD <= 0 || fPrior.logitSD > 5) {
+        throw new RangeError("F prior logitSD must be in (0, 5]");
+      }
+      const cv = config.observationError.proportionalCV;
+      if (config.observationError.model !== "lognormal-proportional" || !Number.isFinite(cv) || cv <= 0 || cv > 3) {
+        throw new RangeError("an explicit proportional observation CV in (0, 3] is required");
+      }
+      if (config.seed !== void 0 && !Number.isFinite(config.seed)) {
+        throw new RangeError("seed must be finite");
+      }
     }
-    runMCMC(nSamples = 5e3, burnIn = 1e3) {
-      const { priorCL, priorVd, priorKa } = this.config;
-      let CL = priorCL.mean;
-      let Vd = priorVd.mean;
-      let ka = priorKa.mean;
-      let logLik = this.logLikelihood(CL, Vd, ka);
-      const samples = {
-        CL: [],
-        Vd: [],
-        ka: [],
-        logLikelihood: []
+    naturalParameters(transformed) {
+      return {
+        CL: Math.exp(transformed[0]),
+        Vd: Math.exp(transformed[1]),
+        ka: Math.exp(transformed[2]),
+        F: logistic2(transformed[3]),
+        activeMoietyFraction: this.config.drug.activeMoietyFraction ?? 1
       };
+    }
+    logPrior(transformed) {
+      return transformed.reduce((sum, value, index) => {
+        const standardized = (value - this.priorCenters[index]) / this.priorSDs[index];
+        return sum - 0.5 * standardized ** 2 - Math.log(this.priorSDs[index]) - 0.5 * LOG_TWO_PI;
+      }, 0);
+    }
+    predictions(parameters) {
+      return new OneCompartmentModel(this.config.drug, parameters).predictAtTimes(
+        this.config.dose,
+        this.config.interval,
+        this.nDoses,
+        this.observations.map((observation) => observation.time)
+      );
+    }
+    logLikelihood(transformed) {
+      const predicted = this.predictions(this.naturalParameters(transformed));
+      const sigma = this.observationLogSD;
+      let result = 0;
+      for (let i = 0; i < predicted.length; i++) {
+        if (!(predicted[i] > 0)) return Number.NEGATIVE_INFINITY;
+        const observed = this.observations[i].concentration;
+        const location = Math.log(predicted[i]) - 0.5 * sigma ** 2;
+        const standardized = (Math.log(observed) - location) / sigma;
+        result += -0.5 * standardized ** 2 - Math.log(observed * sigma) - 0.5 * LOG_TWO_PI;
+      }
+      return result;
+    }
+    logTarget(transformed) {
+      const likelihood = this.logLikelihood(transformed);
+      return { posterior: likelihood + this.logPrior(transformed), likelihood };
+    }
+    initializeChain(rng) {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const state = this.priorCenters.map(
+          (center, index) => center + this.priorSDs[index] * rng.normal()
+        );
+        const target = this.logTarget(state);
+        if (Number.isFinite(target.posterior)) return { state, target };
+      }
+      throw new Error("could not initialize a finite chain; check dosing history and sample times");
+    }
+    runChain(seed, draws, warmup) {
+      const rng = new SeededRandom(seed);
+      let { state, target } = this.initializeChain(rng);
+      const result = emptyChain(seed);
+      const proposalSD = this.priorSDs.map((value) => Math.max(0.01, value * 0.15));
+      const adaptationAccepted = new Array(PARAMETER_NAMES.length).fill(0);
       let accepted = 0;
-      const proposalStd = { CL: priorCL.std * 0.1, Vd: priorVd.std * 0.1, ka: priorKa.std * 0.1 };
-      for (let i = 0; i < nSamples + burnIn; i++) {
-        const CL_new = CL + this.randn() * proposalStd.CL;
-        const Vd_new = Vd + this.randn() * proposalStd.Vd;
-        const ka_new = ka + this.randn() * proposalStd.ka;
-        if (CL_new > 0 && Vd_new > 0 && ka_new > 0) {
-          const logLik_new = this.logLikelihood(CL_new, Vd_new, ka_new);
-          const logPrior = -0.5 * (Math.pow((CL_new - priorCL.mean) / priorCL.std, 2) + Math.pow((Vd_new - priorVd.mean) / priorVd.std, 2) + Math.pow((ka_new - priorKa.mean) / priorKa.std, 2));
-          const logPrior_old = -0.5 * (Math.pow((CL - priorCL.mean) / priorCL.std, 2) + Math.pow((Vd - priorVd.mean) / priorVd.std, 2) + Math.pow((ka - priorKa.mean) / priorKa.std, 2));
-          const logAlpha = logLik_new + logPrior - (logLik + logPrior_old);
-          if (Math.log(Math.random()) < logAlpha) {
-            CL = CL_new;
-            Vd = Vd_new;
-            ka = ka_new;
-            logLik = logLik_new;
+      let proposals = 0;
+      const adaptationWindow = 50;
+      for (let iteration = 0; iteration < warmup + draws; iteration++) {
+        for (let parameter = 0; parameter < PARAMETER_NAMES.length; parameter++) {
+          const proposed = [...state];
+          proposed[parameter] += proposalSD[parameter] * rng.normal();
+          const proposedTarget = this.logTarget(proposed);
+          proposals++;
+          if (Math.log(Math.max(Number.MIN_VALUE, rng.uniform())) < proposedTarget.posterior - target.posterior) {
+            state = proposed;
+            target = proposedTarget;
             accepted++;
+            if (iteration < warmup) adaptationAccepted[parameter]++;
           }
         }
-        if (i >= burnIn) {
-          samples.CL.push(CL);
-          samples.Vd.push(Vd);
-          samples.ka.push(ka);
-          samples.logLikelihood.push(logLik);
+        if (iteration < warmup && (iteration + 1) % adaptationWindow === 0) {
+          for (let parameter = 0; parameter < PARAMETER_NAMES.length; parameter++) {
+            const rate = adaptationAccepted[parameter] / adaptationWindow;
+            proposalSD[parameter] = clamp(
+              proposalSD[parameter] * Math.exp(clamp(rate - 0.44, -0.5, 0.5)),
+              this.priorSDs[parameter] * 5e-3,
+              this.priorSDs[parameter] * 3
+            );
+            adaptationAccepted[parameter] = 0;
+          }
+        }
+        if (iteration >= warmup) {
+          const natural = this.naturalParameters(state);
+          result.CL.push(natural.CL);
+          result.Vd.push(natural.Vd);
+          result.ka.push(natural.ka);
+          result.F.push(natural.F);
+          result.logLikelihood.push(target.likelihood);
+          result.logPosterior.push(target.posterior);
         }
       }
-      const posteriorStats = this.calculatePosteriorStats(samples);
+      result.acceptance = accepted / proposals;
+      return result;
+    }
+    posteriorPredictive(samples, requestedDraws, seed) {
+      const total = samples.CL.length;
+      const draws = Math.min(total, requestedDraws);
+      const rng = new SeededRandom(seed ^ 1347437361);
+      const replicated = this.observations.map(() => []);
+      let replicatedMoreExtreme = 0;
+      for (let draw = 0; draw < draws; draw++) {
+        const index = Math.min(total - 1, Math.floor(rng.uniform() * total));
+        const parameters = {
+          CL: samples.CL[index],
+          Vd: samples.Vd[index],
+          ka: samples.ka[index],
+          F: samples.F[index],
+          activeMoietyFraction: this.config.drug.activeMoietyFraction ?? 1
+        };
+        const predicted = this.predictions(parameters);
+        let observedDiscrepancy = 0;
+        let replicatedDiscrepancy = 0;
+        for (let i = 0; i < predicted.length; i++) {
+          const location = Math.log(predicted[i]) - 0.5 * this.observationLogSD ** 2;
+          const simulated = Math.exp(location + this.observationLogSD * rng.normal());
+          replicated[i].push(simulated);
+          observedDiscrepancy += ((Math.log(this.observations[i].concentration) - location) / this.observationLogSD) ** 2;
+          replicatedDiscrepancy += ((Math.log(simulated) - location) / this.observationLogSD) ** 2;
+        }
+        if (replicatedDiscrepancy >= observedDiscrepancy) replicatedMoreExtreme++;
+      }
+      const predictiveMedian = replicated.map((values) => percentile2(values, 0.5));
+      const lower95 = replicated.map((values) => percentile2(values, 0.025));
+      const upper95 = replicated.map((values) => percentile2(values, 0.975));
+      const observed = this.observations.map((observation) => observation.concentration);
+      const covered = observed.filter(
+        (value, index) => value >= lower95[index] && value <= upper95[index]
+      ).length;
       return {
-        samples,
-        acceptance: accepted / (nSamples + burnIn),
-        posteriorStats
+        time: this.observations.map((observation) => observation.time),
+        observed,
+        median: predictiveMedian,
+        lower95,
+        upper95,
+        coverage95: covered / observed.length,
+        rmseMedian: Math.sqrt(mean(observed.map(
+          (value, index) => (value - predictiveMedian[index]) ** 2
+        ))),
+        bayesianPValue: replicatedMoreExtreme / draws,
+        draws
       };
     }
-    calculatePosteriorStats(samples) {
-      const calcStats = (arr) => {
-        const sorted = [...arr].sort((a, b) => a - b);
-        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-        const variance = arr.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / arr.length;
-        const std = Math.sqrt(variance);
-        const median = sorted[Math.floor(sorted.length / 2)];
-        const ci95 = [
-          sorted[Math.floor(sorted.length * 0.025)],
-          sorted[Math.floor(sorted.length * 0.975)]
-        ];
-        return { mean, std, median, ci95 };
+    runMCMC(options = {}) {
+      const draws = options.draws ?? 1e3;
+      const warmup = options.warmup ?? 1e3;
+      const chainCount = options.chains ?? 4;
+      const maxLag = options.maxAutocorrelationLag ?? 50;
+      const predictiveDraws = options.posteriorPredictiveDraws ?? 400;
+      for (const [name, value, minimum, maximum] of [
+        ["draws", draws, 100, 1e5],
+        ["warmup", warmup, 100, 1e5],
+        ["chains", chainCount, 4, 16],
+        ["maxAutocorrelationLag", maxLag, 1, 1e3],
+        ["posteriorPredictiveDraws", predictiveDraws, 20, 1e4]
+      ]) {
+        if (!Number.isInteger(value) || value < minimum || value > maximum) {
+          throw new RangeError(`${name} must be an integer between ${minimum} and ${maximum}`);
+        }
+      }
+      const master = new SeededRandom(this.config.seed ?? DEFAULT_SEED2);
+      const chains = Array.from({ length: chainCount }, () => {
+        const seed = master.nextUint32();
+        return this.runChain(seed, draws, warmup);
+      });
+      const samples = {
+        CL: chains.flatMap((chain) => chain.CL),
+        Vd: chains.flatMap((chain) => chain.Vd),
+        ka: chains.flatMap((chain) => chain.ka),
+        F: chains.flatMap((chain) => chain.F),
+        logLikelihood: chains.flatMap((chain) => chain.logLikelihood),
+        logPosterior: chains.flatMap((chain) => chain.logPosterior)
       };
+      const byParameter = Object.fromEntries(PARAMETER_NAMES.map((name) => [
+        name,
+        calculateChainDiagnostics(chains.map((chain) => chain[name]), maxLag)
+      ]));
+      const maxRhat = Math.max(...PARAMETER_NAMES.map((name) => byParameter[name].rhat));
+      const minBulkESS = Math.min(...PARAMETER_NAMES.map((name) => byParameter[name].bulkESS));
+      const minTailESS = Math.min(...PARAMETER_NAMES.map((name) => byParameter[name].tailESS));
+      const requiredESS = 100 * chainCount;
+      const warnings = [];
+      if (maxRhat > 1.05 || !Number.isFinite(maxRhat)) {
+        warnings.push("R-hat exceeds 1.05; chains have not demonstrated convergence.");
+      }
+      if (minBulkESS < requiredESS || minTailESS < requiredESS) {
+        warnings.push(`Bulk/tail ESS should each reach at least ${requiredESS} for ${chainCount} chains.`);
+      }
+      if (this.observations.length <= PARAMETER_NAMES.length) {
+        warnings.push("Sparse data relative to four free PK parameters; F, V and CL may remain weakly identified.");
+      }
+      const acceptanceByChain = chains.map((chain) => chain.acceptance);
+      if (acceptanceByChain.some((rate) => rate < 0.1 || rate > 0.8)) {
+        warnings.push("At least one random-walk chain has an extreme acceptance rate.");
+      }
+      const diagnostics = {
+        byParameter,
+        maxRhat,
+        minBulkESS,
+        minTailESS,
+        converged: warnings.length === 0,
+        warnings
+      };
+      const posteriorStats = Object.fromEntries(PARAMETER_NAMES.map((name) => {
+        const values = samples[name];
+        const std = Math.sqrt(variance(values));
+        const chainDiagnostics = byParameter[name];
+        return [name, {
+          mean: mean(values),
+          std,
+          median: percentile2(values, 0.5),
+          ci95: [percentile2(values, 0.025), percentile2(values, 0.975)],
+          mcseMean: std / Math.sqrt(Math.max(1, chainDiagnostics.bulkESS)),
+          ...chainDiagnostics
+        }];
+      }));
       return {
-        CL: calcStats(samples.CL),
-        Vd: calcStats(samples.Vd),
-        ka: calcStats(samples.ka)
+        chains,
+        samples,
+        acceptance: mean(acceptanceByChain),
+        acceptanceByChain,
+        posteriorStats,
+        diagnostics,
+        posteriorPredictive: this.posteriorPredictive(
+          samples,
+          predictiveDraws,
+          this.config.seed ?? DEFAULT_SEED2
+        )
       };
     }
   };

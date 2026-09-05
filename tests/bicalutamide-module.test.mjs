@@ -67,5 +67,5 @@ test('every source-library question has a row-level disposition', () => {
       .length,
     107,
   );
-  assert.match(coverage, /不可打绿的验收门/);
+  assert.match(coverage, /不可升级为生物验证结论的外部门/);
 });

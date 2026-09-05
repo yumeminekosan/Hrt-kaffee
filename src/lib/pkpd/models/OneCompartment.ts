@@ -93,6 +93,47 @@ export class OneCompartmentModel {
     return this.solver.step(state, { ...this.parameters, dt });
   }
 
+  /**
+   * Exact superposition at arbitrary observation times. This avoids rounding
+   * blood-sample times onto an integration grid inside the Bayesian module.
+   */
+  predictAtTimes(
+    doseMg: number,
+    interval: number,
+    nDoses: number,
+    times: number[]
+  ): number[] {
+    if (!Number.isFinite(doseMg) || doseMg <= 0) throw new RangeError('dose must be positive');
+    if (!Number.isFinite(interval) || interval <= 0) throw new RangeError('interval must be positive');
+    if (!Number.isInteger(nDoses) || nDoses <= 0) throw new RangeError('nDoses must be a positive integer');
+    if (times.some(time => !Number.isFinite(time) || time < 0)) {
+      throw new RangeError('observation times must be finite and non-negative');
+    }
+
+    const { CL, Vd, ka, F, activeMoietyFraction } = this.parameters;
+    const ke = CL / Vd;
+    const activeDoseMicrograms = doseMg * 1000 * activeMoietyFraction;
+
+    return times.map(time => {
+      let centralAmount = 0;
+      for (let doseIndex = 0; doseIndex < nDoses; doseIndex++) {
+        const elapsed = time - doseIndex * interval;
+        if (elapsed < -TIME_EPSILON) break;
+        if (this.drug.route === 'intravenous-bolus') {
+          centralAmount += activeDoseMicrograms * F * Math.exp(-ke * Math.max(0, elapsed));
+        } else if (Math.abs(ka - ke) < 1e-10) {
+          centralAmount += activeDoseMicrograms * F * ka * Math.max(0, elapsed)
+            * Math.exp(-ke * Math.max(0, elapsed));
+        } else {
+          centralAmount += activeDoseMicrograms * F * ka
+            * (Math.exp(-ka * Math.max(0, elapsed)) - Math.exp(-ke * Math.max(0, elapsed)))
+            / (ke - ka);
+        }
+      }
+      return this.toDisplayUnit(Math.max(0, centralAmount) / Vd);
+    });
+  }
+
   private analysisWindow(interval: number, nDoses: number, duration: number): [number, number] {
     if (duration <= interval || nDoses <= 1) return [0, duration];
     const lastCompleteIndex = Math.max(

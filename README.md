@@ -8,6 +8,7 @@
 
 - **途径感知 PK/PD 模拟器**：口服/舌下/透皮/IM-SC 储库与 IV 事件分开；部署路径使用耗散一室模型的正值解析转移和质量账本
 - **参数与 Monte Carlo**：计算末次完整给药区间的 Cmax、Cmin、Tmax、AUCτ；可复现参数敏感性抽样与观测误差分层，不把用户 CV 冒充拟合 IIV
+- **多链 Bayesian 审计**：正参数 log / `F` logit 空间四链 MCMC，输出 rank-normalized split R̂、bulk/tail ESS、自相关、MCSE 与 posterior predictive checks；任一门失败就禁止把结果应用到主模拟器
 - **多药物交互**：支持 CPA 等药物对 CYP3A4 酶抑制的模拟
 - **给药方案优化**：比较不同给药方案的效果
 - **内联 5αR 动力学模块**：原 Hrt-kaffee 页面内直接计算非那雄胺与度他雄胺；使用者只看到剂量、时间、5αR1/5αR2 抑制、DHT 下降与曲线，CTMC→Kurtz/LDP/Doob/PDE/链复形过程仅保留在 Kotlin 实现与审计文档
@@ -54,7 +55,7 @@ gradle :composeApp:run
 gradle :embeddedEngine:jsBrowserDistribution
 ```
 
-本地构建要求 JDK 17 与 Gradle 9.5.0；CI 固定使用相同版本。途径与 Monte Carlo 方程/拒绝门见 [`ar-kotlin/docs/PK_ROUTE_MONTE_CARLO.md`](ar-kotlin/docs/PK_ROUTE_MONTE_CARLO.md)，比卡鲁胺方程与验收门见 [`ar-kotlin/docs/BICALUTAMIDE_MODEL.md`](ar-kotlin/docs/BICALUTAMIDE_MODEL.md)，E2–比卡鲁胺识别门与阈值反演见 [`ar-kotlin/docs/BICALUTAMIDE_E2_BRIDGE.md`](ar-kotlin/docs/BICALUTAMIDE_E2_BRIDGE.md)，两份问题库 157 条逐题处置见 [`ar-kotlin/docs/BICALUTAMIDE_QUESTION_COVERAGE.md`](ar-kotlin/docs/BICALUTAMIDE_QUESTION_COVERAGE.md)。逐箭头审计见 [`ar-kotlin/docs/FLOW_AUDIT.md`](ar-kotlin/docs/FLOW_AUDIT.md)，模型边界、成立条件和验证状态见 [`ar-kotlin/docs/RIGOR_MATRIX.md`](ar-kotlin/docs/RIGOR_MATRIX.md)。该模块是研究模拟，不提供诊断或给药建议。
+本地构建要求 JDK 17 与 Gradle 9.5.0；CI 固定使用相同版本。途径与 Monte Carlo 方程/拒绝门见 [`ar-kotlin/docs/PK_ROUTE_MONTE_CARLO.md`](ar-kotlin/docs/PK_ROUTE_MONTE_CARLO.md)，多链采样与诊断门见 [`ar-kotlin/docs/MCMC_DIAGNOSTICS.md`](ar-kotlin/docs/MCMC_DIAGNOSTICS.md)，比卡鲁胺方程与验收门见 [`ar-kotlin/docs/BICALUTAMIDE_MODEL.md`](ar-kotlin/docs/BICALUTAMIDE_MODEL.md)，E2–比卡鲁胺识别门与阈值反演见 [`ar-kotlin/docs/BICALUTAMIDE_E2_BRIDGE.md`](ar-kotlin/docs/BICALUTAMIDE_E2_BRIDGE.md)，两份问题库 157 条逐题处置见 [`ar-kotlin/docs/BICALUTAMIDE_QUESTION_COVERAGE.md`](ar-kotlin/docs/BICALUTAMIDE_QUESTION_COVERAGE.md)。逐箭头审计见 [`ar-kotlin/docs/FLOW_AUDIT.md`](ar-kotlin/docs/FLOW_AUDIT.md)，模型边界、成立条件和验证状态见 [`ar-kotlin/docs/RIGOR_MATRIX.md`](ar-kotlin/docs/RIGOR_MATRIX.md)。该模块是研究模拟，不提供诊断或给药建议。
 
 ## 在线访问
 
